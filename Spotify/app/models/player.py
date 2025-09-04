@@ -1,7 +1,11 @@
-from app.models.player_states import PlayerState, PlayingState, PauseState, StoppedState
+from app.models.player_states import PlayerState, StoppedState
 from app.models.enums import PlayerStatus
 from app.models.playable import Song
-from typing import Optional
+from typing import Optional,TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.playable import Playable
 
 
 class Player:
@@ -11,7 +15,7 @@ class Player:
         self.queue: list[Song] = []
         self.current_song: Optional[Song] = None
         self.current_index: int = -1
-        self.current_user: Optional["User"] = None
+        self.current_user: Optional['User'] = None
 
     def load(self, user: "User", playable: "Playable"):
         self.current_user = user
