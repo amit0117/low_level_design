@@ -1,6 +1,8 @@
 from app.models.playable import Album
-from typing import List
+from typing import List, TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from app.models.artist import Artist
 
 class ArtistObserver:
     # Create a default implementation for the update method
