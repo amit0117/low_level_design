@@ -11,6 +11,7 @@ from app.models.stock import Stock
 from app.models.order_state import OrderState, OpenState
 from typing import TYPE_CHECKING, Optional
 from uuid import uuid4
+from datetime import datetime
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -21,6 +22,7 @@ class Order:
     def __init__(
         self,
         order_id: str,
+        ordered_at: datetime,
         order_type: OrderType,
         transaction_type: TransactionType,
         quantity: int,
@@ -31,6 +33,7 @@ class Order:
         stop_price: Optional[float] = None,
     ):
         self.order_id = order_id
+        self.ordered_at = ordered_at
         self.order_type = order_type
         self.transaction_type = transaction_type
         self.quantity = quantity
@@ -41,6 +44,12 @@ class Order:
         self.owner = user
         self.limit_price = limit_price
         self.stop_price = stop_price
+        self.has_triggered = False  # Required for stop loss / stop limit order type
+
+    def __repr__(self):
+        print(
+            f"order with order_type: {self.order_type}, quantity: {self.quantity} , limit_price :{self.limit_price}, stop_price: {self.stop_price}, transaction_type: {self.transaction_type}"
+        )
 
     def get_quantity(self) -> int:
         return self.quantity
@@ -158,6 +167,7 @@ class OrderBuilder:
         return Order(
             str(uuid4()),
             self.order_type,
+            datetime.now(),
             self.transaction_type,
             self.quantity,
             self.strategy,

@@ -15,6 +15,7 @@ class TransactionType(Enum):
 
 class OrderStatus(Enum):
     OPEN = "OPEN"
+    TRIGGERED = "TRIGGERED"
     PARTIALLY_FILLED = "PARTIALLY_FILLED"
     CANCELLED = "CANCELLED"
     FILLED = "FILLED"

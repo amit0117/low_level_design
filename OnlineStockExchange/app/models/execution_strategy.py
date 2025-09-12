@@ -1,4 +1,5 @@
-from app.models.enums import OrderType, TransactionType
+from app.models.enums import TransactionType, OrderStatus
+from app.models.order_state import TriggerState
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
@@ -34,27 +35,62 @@ class MarketOrder(ExecutionStrategy):
 
 class StopLossOrder(ExecutionStrategy):
 
-    def can_execute(order: "Order") -> bool:
+    def can_execute(self, order: "Order") -> bool:
         market_price = order.get_stock().get_price()
-        # Only execute if market price go above or below the stop price
-        if order.transaction_type == TransactionType.BUY:
-            return order.stop_price >= market_price
-        return order.stop_price <= market_price
+
+        if not getattr(order, "has_triggered", False):  # not triggered yet
+            if (
+                order.transaction_type == TransactionType.BUY
+                and market_price >= order.get_stop_price()
+            ):
+                # change the state and status of order
+                order.set_state(TriggerState())
+                order.set_status(OrderStatus.TRIGGERED)
+                order.has_triggered = True
+                # Once Triggered , order will act as a Market Order
+                return True
+            elif (
+                order.transaction_type == TransactionType.SELL
+                and market_price <= order.get_stop_price()
+            ):
+                # change the state and status of order
+                order.set_state(TriggerState())
+                order.set_status(OrderStatus.TRIGGERED)
+                order.has_triggered = True
+                return True
+            return False  # not executed yet, only waiting
+
+        # Once triggered, behave like a MarketOrder
+        return True
 
 
 class StopLimitOrder(ExecutionStrategy):
-
     def can_execute(self, order: "Order") -> bool:
-        # If order has not triggered yet it will behave like stop order
-        # Once triggered, act like a limit order
-        # Altogether we can say for BUY the market price should be: stop_price<=market_price<=limit_price
-        # and just opposite will be true for SELL order i.e market_price should be less(or equal to) than stop price but greater(or equal to) than limit price
         market_price = order.get_stock().get_price()
+
+        if not getattr(order, "has_triggered", False):  # waiting
+            if (
+                order.transaction_type == TransactionType.BUY
+                and market_price >= order.get_stop_price()
+            ):
+                # change the state and status of order
+                order.set_state(TriggerState())
+                order.set_status(OrderStatus.TRIGGERED)
+                order.has_triggered = True
+            elif (
+                order.transaction_type == TransactionType.SELL
+                and market_price <= order.get_stop_price()
+            ):
+                # change the state and status of order
+                order.set_state(TriggerState())
+                order.set_status(OrderStatus.TRIGGERED)
+                order.has_triggered = True
+            else:
+                # If not triggered
+                return False
+
+        # Once triggered, behave like a LimitOrder
         if order.transaction_type == TransactionType.BUY:
-            return (
-                order.stop_price <= market_price and market_price <= order.limit_price
-            )
+            return market_price <= order.limit_price
         else:
-            return (
-                market_price <= order.stop_price and market_price >= order.limit_price
-            )
+            return market_price >= order.limit_price

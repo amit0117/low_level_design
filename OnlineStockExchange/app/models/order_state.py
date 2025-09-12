@@ -14,14 +14,21 @@ class OrderState(ABC):
 
 class OpenState(OrderState):
     def cancel(self, order: "Order"):
-        print("Cancelling order... with id:", order.order_id)
+        print("Cancelling opened order...:", order)
+        order.set_status(OrderStatus.CANCELLED)
+        order.set_state(CancelledState())
+
+
+class TriggerState(OrderState):
+    def cancel(self, order: "Order") -> None:
+        print("Cancelling triggered order...", order)
         order.set_status(OrderStatus.CANCELLED)
         order.set_state(CancelledState())
 
 
 class PartiallyFilledState(OrderState):
     def cancel(self, order: "Order"):
-        print("Cancelling order... with id:", order.order_id)
+        print("Cancelling partially filled order... :", order)
         order.set_status(OrderStatus.CANCELLED)
         order.set_state(CancelledState())
 
