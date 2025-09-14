@@ -2,7 +2,7 @@ from threading import Lock
 from typing import Optional
 from app.models.user import User
 from app.models.stock import Stock
-
+from app.models.order import Order
 
 class StockBrokerageSystem:
     _lock = Lock()
@@ -43,10 +43,11 @@ class StockBrokerageSystem:
         with self.process_lock:
             self._stocks[stock.get_symbol()] = stock
 
-    def remove_stock(self, stock: Stock):
+    def remove_stock(self, stock: Stock)->None:
         with self.process_lock:
             if stock.get_symbol() not in self._stocks:
                 raise Exception(f"Stock {stock.get_symbol()} does not exist")
             del self._stocks[stock.get_symbol()]
 
-    def place_buy_order
+    def place_buy_order(self,order:Order)->None:
+        pass
