@@ -11,6 +11,7 @@ from app.models.enums import OrderStatus, OrderType, TransactionType
 from collections import defaultdict
 from app.exceptions import NoMatchStockFoundException
 
+
 class StockExchange:
     _lock = Lock()
     _instance: Optional["StockExchange"] = None
@@ -19,7 +20,7 @@ class StockExchange:
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
-                    cls._instance = super().__new__()
+                    cls._instance = super().__new__(cls)
         return cls._instance
 
     def __init__(self):
@@ -46,29 +47,17 @@ class StockExchange:
             self._match_order(order.get_stock())
 
     def _find_best_buy_order(self, buy_orders: list[Order]) -> Order:
-        executable_orders = [
-            o
-            for o in buy_orders
-            if o.get_status() == OrderStatus.OPEN and o.can_execute()
-        ]
+        executable_orders = [o for o in buy_orders if o.get_status() == OrderStatus.OPEN and o.can_execute()]
 
         if not executable_orders:
             raise NoMatchStockFoundException()
 
         # Prioritize by order type and price
-        limit_orders = [
-            o
-            for o in executable_orders
-            if o.order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]
-        ]
-        market_orders = [
-            o
-            for o in executable_orders
-            if o.order_type in [OrderType.MARKET, OrderType.STOP_LOSS]
-        ]
+        limit_orders = [o for o in executable_orders if o.order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]]
+        market_orders = [o for o in executable_orders if o.order_type in [OrderType.MARKET, OrderType.STOP_LOSS]]
 
         if limit_orders:
-            return max(limit_orders, key=lambda o: o.get_stop_price())
+            return max(limit_orders, key=lambda o: o.get_limit_price())
         elif market_orders:
             # IF there is any Market order (Market, Stop Limit order) that will always execute, So returning the first entry
             return market_orders[0]
@@ -76,29 +65,17 @@ class StockExchange:
         raise NoMatchStockFoundException()
 
     def _find_best_sell_order(self, sell_orders: list[Order]) -> Order:
-        executable_orders = [
-            o
-            for o in sell_orders
-            if o.get_status() == OrderStatus.OPEN and o.can_execute()
-        ]
+        executable_orders = [o for o in sell_orders if o.get_status() == OrderStatus.OPEN and o.can_execute()]
 
         if not executable_orders:
             raise NoMatchStockFoundException()
 
         # Prioritize by order type and price
-        limit_orders = [
-            o
-            for o in executable_orders
-            if o.order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]
-        ]
-        market_orders = [
-            o
-            for o in executable_orders
-            if o.order_type in [OrderType.MARKET, OrderType.STOP_LOSS]
-        ]
+        limit_orders = [o for o in executable_orders if o.order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]]
+        market_orders = [o for o in executable_orders if o.order_type in [OrderType.MARKET, OrderType.STOP_LOSS]]
 
         if limit_orders:
-            return min(limit_orders, key=lambda o: o.get_stop_price())
+            return min(limit_orders, key=lambda o: o.get_limit_price())
         elif market_orders:
             # If there is any Market order (Market or Stop Limit) return because that will always execute
             return market_orders[0]
@@ -106,34 +83,47 @@ class StockExchange:
         raise NoMatchStockFoundException()
 
     def _match_order(self, stock: Stock) -> None:
-        with self.match_lock:
-            buys = self.buy_orders.get(stock.get_symbol(), [])
-            sells = self.sell_orders.get(stock.get_symbol(), [])
+        # Don't acquire lock here since it's already held by the calling method
+        buys = self.buy_orders.get(stock.get_symbol(), [])
+        sells = self.sell_orders.get(stock.get_symbol(), [])
 
-            if not buys or not sells:
-                return
+        if not buys or not sells:
+            return
 
-            while True:
-                try:
-                    best_buy = self._find_best_buy_order(buys)
-                    best_sell = self._find_best_sell_order(sells)
+        while True:
+            try:
+                best_buy = self._find_best_buy_order(buys)
+                best_sell = self._find_best_sell_order(sells)
 
-                    if self._can_match(best_buy, best_sell):
-                        self._execute_trade(best_buy, best_sell)
-                    else:
-                        break
-
-                except NoMatchStockFoundException:
+                if self._can_match(best_buy, best_sell):
+                    self._execute_trade(best_buy, best_sell)
+                else:
                     break
 
+            except NoMatchStockFoundException:
+                break
+
     def _can_match(self, buy_order: Order, sell_order: Order) -> bool:
-        buy_price = self._get_execution_price(buy_order)
-        sell_price = self._get_execution_price(sell_order)
+        # For market orders, they can always match with each other
+        if buy_order.order_type in [OrderType.MARKET, OrderType.STOP_LOSS] and sell_order.order_type in [OrderType.MARKET, OrderType.STOP_LOSS]:
+            return True
+
+        # For limit orders, check price compatibility
+        if buy_order.order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]:
+            buy_price = buy_order.get_limit_price()
+        else:
+            buy_price = buy_order.get_stock().get_price()
+
+        if sell_order.order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]:
+            sell_price = sell_order.get_limit_price()
+        else:
+            sell_price = sell_order.get_stock().get_price()
+
         return buy_price >= sell_price
 
     def _get_execution_price(self, order: Order) -> float:
         if order.order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]:
-            return order.get_stop_price()
+            return order.get_limit_price()
         else:  # MARKET or STOP_LOSS
             return order.get_stock().get_price()
 
@@ -155,17 +145,21 @@ class StockExchange:
         self._check_stop_orders_after_price_change(buy_order.get_stock())
 
     def _determine_execution_price(self, buy_order: Order, sell_order: Order) -> float:
+        # If both are market orders, use current stock price
+        if buy_order.order_type in [OrderType.MARKET, OrderType.STOP_LOSS] and sell_order.order_type in [OrderType.MARKET, OrderType.STOP_LOSS]:
+            return buy_order.get_stock().get_price()
+
         # Market orders execute at the limit order price if available
         if buy_order.order_type in [OrderType.MARKET, OrderType.STOP_LOSS]:
             if sell_order.order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]:
-                return sell_order.get_stop_price()
+                return sell_order.get_limit_price()
         elif sell_order.order_type in [OrderType.MARKET, OrderType.STOP_LOSS]:
             if buy_order.order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]:
-                return buy_order.get_stop_price()
+                return buy_order.get_limit_price()
 
         # Both are limit orders - use the better price for the market
-        buy_price = buy_order.get_stop_price()
-        sell_price = sell_order.get_stop_price()
+        buy_price = buy_order.get_limit_price()
+        sell_price = sell_order.get_limit_price()
         return min(buy_price, sell_price)
 
     def _check_stop_orders_after_price_change(self, stock: Stock) -> None:
@@ -194,7 +188,7 @@ class StockExchange:
             account = order.get_owner().get_account()
             total_amount = quantity * price
 
-            if order.transaction_type.name == TransactionType.BUY:
+            if order.transaction_type == TransactionType.BUY:
                 account.debit(total_amount)
                 account.add_stock(order.get_stock().get_symbol(), quantity)
             else:  # SELL
@@ -206,6 +200,11 @@ class StockExchange:
             if remaining_quantity == 0:
                 order.set_state(FilledState())
                 order.set_status(OrderStatus.FILLED)
+                # remove from order book
+                if order.transaction_type == TransactionType.BUY:
+                    self.buy_orders[order.get_stock().get_symbol()].remove(order)
+                else:
+                    self.sell_orders[order.get_stock().get_symbol()].remove(order)
             else:
                 order.set_state(PartiallyFilledState())
                 order.set_status(OrderStatus.PARTIALLY_FILLED)

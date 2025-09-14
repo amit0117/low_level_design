@@ -47,9 +47,7 @@ class Order:
         self.has_triggered = False  # Required for stop loss / stop limit order type
 
     def __repr__(self):
-        print(
-            f"order with order_type: {self.order_type}, quantity: {self.quantity} , limit_price :{self.limit_price}, stop_price: {self.stop_price}, transaction_type: {self.transaction_type}"
-        )
+        return f"order with order_type: {self.order_type.value}, quantity: {self.quantity} , limit_price :{self.limit_price}, stop_price: {self.stop_price}, transaction_type: {self.transaction_type.value}, status: {self.status.value}, has_triggered: {self.has_triggered}"
 
     def get_quantity(self) -> int:
         return self.quantity
@@ -103,14 +101,14 @@ class OrderBuilder:
 
     def reset(self):
         self.stock: Optional[Stock] = None
-        self.user: Optional[User] = None
+        self.user: Optional["User"] = None
         self.order_type: Optional[OrderType] = None
         self.transaction_type: Optional[TransactionType] = None
         self.quantity: int = 0
         self.limit_price: float = 0.0
         self.stop_price: float = 0.0
 
-    def for_user(self, user: User) -> "OrderBuilder":
+    def for_user(self, user: "User") -> "OrderBuilder":
         self.user = user
         return self
 
@@ -129,20 +127,24 @@ class OrderBuilder:
         return self
 
     def as_market(self) -> "OrderBuilder":
+        self.order_type = OrderType.MARKET
         self.strategy = MarketOrder()
         return self
 
     def as_limit(self, limit_price: float) -> "OrderBuilder":
+        self.order_type = OrderType.LIMIT
         self.limit_price = limit_price
         self.strategy = LimitOrder()
         return self
 
     def as_stop_loss(self, stop_price: float) -> "OrderBuilder":
+        self.order_type = OrderType.STOP_LOSS
         self.stop_price = stop_price
         self.strategy = StopLossOrder()
         return self
 
     def as_stop_limit(self, stop_price: float, limit_price: float) -> "OrderBuilder":
+        self.order_type = OrderType.STOP_LIMIT
         self.stop_price = stop_price
         self.limit_price = limit_price
         self.strategy = StopLimitOrder()
@@ -155,10 +157,7 @@ class OrderBuilder:
         if (
             (self.strategy == OrderType.LIMIT and not self.limit_price)
             or (self.strategy == OrderType.STOP_LOSS and not self.stop_price)
-            or (
-                self.strategy == OrderType.STOP_LIMIT
-                and not any(self.limit_price or self.stop_price)
-            )
+            or (self.strategy == OrderType.STOP_LIMIT and not any(self.limit_price or self.stop_price))
         ):
             return False
         return True
@@ -169,8 +168,8 @@ class OrderBuilder:
 
         return Order(
             str(uuid4()),
-            self.order_type,
             datetime.now(),
+            self.order_type,
             self.transaction_type,
             self.quantity,
             self.strategy,

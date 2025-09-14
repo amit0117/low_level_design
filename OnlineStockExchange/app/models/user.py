@@ -21,12 +21,18 @@ class User(StockObserver):
     def get_orders(self) -> list[Order]:
         return self.orders.copy()
 
+    def add_order(self, order: Order):
+        self.orders.append(order)
+
+    def remove_order(self, order: Order):
+        if order not in self.orders:
+            raise ValueError(f"Order {order.order_id} not found in user {self.name}'s orders")
+        self.orders.remove(order)
+
     def update(self, stock: Stock):
-        print(
-            f"User {self.name} notified about stock {stock.symbol} price change to {stock.get_price():.2f}"
-        )
+        print(f"User {self.name} notified about stock {stock.symbol} price change to {stock.get_price():.2f}")
 
     def order_status_update(self, order: Order):
         print(
-            f"User {self.name} notified about order {order.order_id} status change to {order.get_status().value} for stock {order.get_stock().get_symbol()} at price {order.get_price():.2f} and quantity {order.get_quantity()}"
+            f"User {self.name} notified about order {order.order_id} status change to {order.get_status().value} for stock {order.get_stock().get_symbol()} at price {order.get_stock().get_price():.2f} and quantity {order.get_quantity()}"
         )
