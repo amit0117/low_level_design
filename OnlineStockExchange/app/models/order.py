@@ -72,6 +72,9 @@ class Order:
     def set_state(self, state: OrderState):
         self.state = state
 
+    def set_quantity(self, quantity: int):
+        self.quantity = quantity
+
     def set_status(self, status: OrderStatus):
         self.status = status
         self._notify_owner()

@@ -86,7 +86,7 @@ class StopLimitOrder(ExecutionStrategy):
                 order.set_status(OrderStatus.TRIGGERED)
                 order.has_triggered = True
             else:
-                # If not triggered
+                # If not triggered and does not meet any criteria for triggering then return false
                 return False
 
         # Once triggered, behave like a LimitOrder
