@@ -1,7 +1,7 @@
 from app.models.player_states import PlayerState, StoppedState
 from app.models.enums import PlayerStatus
 from app.models.playable import Song
-from typing import Optional,TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -15,7 +15,7 @@ class Player:
         self.queue: list[Song] = []
         self.current_song: Optional[Song] = None
         self.current_index: int = -1
-        self.current_user: Optional['User'] = None
+        self.current_user: Optional["User"] = None
 
     def load(self, user: "User", playable: "Playable"):
         self.current_user = user
@@ -79,8 +79,6 @@ class Player:
         # Play the current song in the queue
         if self.current_song:
             self.current_user.get_playback_strategy().play(self.current_song, self)
-            print(
-                f"Playing song: {self.current_song.title} by artist: {self.current_song.artist.name}"
-            )
+            print(f"Playing song: {self.current_song.title} by artist: {self.current_song.artist.name}")
         else:
             print("No song is currently loaded.")

@@ -1,5 +1,9 @@
 from abc import ABC, abstractmethod
 from app.models.enums import PlayerStatus
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.player import Player
 
 
 class PlayerState(ABC):
@@ -17,9 +21,7 @@ class PlayerState(ABC):
 
     @abstractmethod
     def toggle_play_pause(self, player: "Player"):
-        raise NotImplementedError(
-            "Subclasses must implement toggle_play_pause function"
-        )
+        raise NotImplementedError("Subclasses must implement toggle_play_pause function")
 
 
 class PauseState(PlayerState):

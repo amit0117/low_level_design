@@ -1,5 +1,11 @@
 from typing import Any
 from app.models.artist_observer import ArtistObserver
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.artist import Artist
+    from app.models.playable import Album
+
 
 class Person(ArtistObserver):
     def __init__(self, id: str, name: str, address: Any = None, email: str = None):
@@ -20,7 +26,7 @@ class Person(ArtistObserver):
     def set_email(self, email: str):
         self.email = email
 
-    def update(self, artist: 'Artist', album: 'Album'):
+    def update(self, artist: "Artist", album: "Album"):
         if self.id != artist.id:
             print(f"Message for {self.name}")
             return super().update(artist, album)

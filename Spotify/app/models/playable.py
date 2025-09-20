@@ -2,6 +2,11 @@ from abc import ABC, abstractmethod
 from typing import List
 from app.models.enums import SongGenre, SongTheme
 from threading import Lock
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.artist import Artist
+    from app.models.playable import Song
 
 
 class Playable(ABC):
@@ -17,7 +22,7 @@ class Song(Playable):
         id: str,
         title: str,
         duration: str | int,
-        artist: 'Artist',
+        artist: "Artist",
         genre: SongGenre,
         theme: SongTheme,
     ):
@@ -30,6 +35,7 @@ class Song(Playable):
 
     def get_tracks(self) -> List["Song"]:
         return [self]
+
     def __repr__(self):
         return f"Song(title='{self.title}', artist='{self.artist.name}')"
 
@@ -40,6 +46,7 @@ class Album(Playable):
         self.title = title
         self.tracks: list[Song] = []
         self.lock = Lock()
+
         def __repr__(self):
             return f"Album(title='{self.title}', artist='{self.artist.name}')"
 
