@@ -6,7 +6,7 @@ from app.models.enums import PaymentStatus
 class PaymentStrategy(ABC):
     @abstractmethod
     def pay(self, amount: float) -> PaymentResult:
-        pass
+        raise NotImplementedError("Subclasses must implement this method")
 
 
 # For Now all payment strategies are successful
