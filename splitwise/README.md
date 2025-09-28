@@ -135,6 +135,12 @@ class SplitWiseService:
 
 ## 🏗️ Architecture
 
+### UML Class Diagram
+
+![UML Class Diagram](UML_Class_Diagram.md)
+
+**PlantUML Source**: [UML_Class_Diagram.puml](UML_Class_Diagram.puml)
+
 ### Clean Architecture Layers
 
 ```
@@ -198,6 +204,8 @@ splitwise/
 │       └── transaction_observer.py # Transaction event notifications
 ├── run.py                        # Comprehensive demo script
 ├── README.md                     # This file
+├── UML_Class_Diagram.puml        # PlantUML class diagram source
+├── UML_Class_Diagram.md          # Mermaid class diagram (GitHub compatible)
 └── venv/                         # Virtual environment
 ```
 
