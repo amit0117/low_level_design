@@ -1,0 +1,307 @@
+@startuml Splitwise_Complete_UML_Diagram
+
+!theme plain
+skinparam classAttributeIconSize 0
+skinparam classFontSize 12
+skinparam packageFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam classBackgroundColor #F8F9FA
+skinparam classBorderColor #343A40
+skinparam arrowColor #007BFF
+
+title Splitwise - Complete UML Class Diagram with Data Flow
+
+package "🔧 Service Layer" #E3F2FD {
+    class SplitWiseService {
+        - _instance: SplitWiseService
+        - _lock: Lock
+        - user_service: UserService
+        - group_service: GroupService
+        - _has_initialized: bool
+        --
+        + __new__(cls): SplitWiseService
+        + __init__()
+        + get_instance(): SplitWiseService
+        + add_user(name: str, email: str): User
+        + add_group(name: str, members: list[User]): Group
+        + get_user(user_id: str): User
+        + get_group(group_id: str): Group
+        + add_expense_to_group(group_id: str, expense: Expense): None
+        + show_user_balance_sheet(user_id: str): None
+        + settle_up(user_id1: str, user_id2: str, amount: float): None
+    }
+
+    class UserService {
+        - users: dict[str, User]
+        --
+        + create_user(name: str, email: str): User
+        + get_user(user_id: str): User
+        + show_balance_sheet(user_id: str): None
+        + settle_up(user_id1: str, user_id2: str, amount: float): None
+    }
+
+    class GroupService {
+        - groups: dict[str, Group]
+        --
+        + create_group(name: str, members: list[User]): Group
+        + get_group(group_id: str): Group
+        + add_expense(group_id: str, expense: Expense): None
+    }
+}
+
+package "👥 Domain Layer" #F3E5F5 {
+    class User {
+        - id: str
+        - name: str
+        - email: str
+        - balance_sheet: BalanceSheet
+        - groups: list[Group]
+        --
+        + __init__(name: str, email: str)
+        + get_id(): str
+        + get_name(): str
+        + get_email(): str
+        + get_balance_sheet(): BalanceSheet
+        + add_group(group: Group): None
+        + remove_group(group: Group): None
+        + print_group_details(): list[Group]
+        + update(data: Any, message: str): None
+        + transaction_update(transaction: Transaction): None
+        + update_group(message: str): None
+        + expense_update(expense: Expense, message: str): None
+    }
+
+    class Group {
+        - id: str
+        - name: str
+        - members: list[User]
+        - expenses: list[Expense]
+        --
+        + __init__(name: str, members: list[User])
+        + get_id(): str
+        + get_name(): str
+        + get_members(): list[User]
+        + add_member(member: User): None
+        + remove_member(member: User): None
+        + add_expense(expense: Expense): None
+        + get_expenses(): list[Expense]
+        + simplify_expenses(): list[Transaction]
+    }
+
+    class Expense {
+        - id: str
+        - description: str
+        - amount: float
+        - paid_by: User
+        - participants: list[User]
+        - split_strategy: SplitStrategy
+        - created_at: str
+        - split_values: Optional[list[float]]
+        --
+        + __init__(id: str, description: str, amount: float, paid_by: User, participants: list[User], split_strategy: SplitStrategy, split_values: Optional[list[float]])
+        + get_description(): str
+        + get_amount(): float
+        + get_paid_by(): User
+        + get_participants(): list[User]
+        + get_splits(): list[Split]
+        + get_split_strategy(): SplitStrategy
+        + get_created_at(): str
+        + get_id(): str
+    }
+
+    class Transaction {
+        - id: str
+        - from_user: User
+        - to_user: User
+        - amount: float
+        - status: TransactionStatus
+        --
+        + __init__(from_user: User, to_user: User, amount: float)
+        + get_id(): str
+        + get_from_user(): User
+        + get_to_user(): User
+        + get_amount(): float
+        + get_status(): TransactionStatus
+        + set_status(status: TransactionStatus): None
+        + __str__(): str
+    }
+
+    class BalanceSheet {
+        - owner: User
+        - balances: dict[User, float]
+        - lock: Lock
+        --
+        + __init__(user: User)
+        + get_balances(): dict[User, float]
+        + adjust_balance(user: User, amount: float): None
+        + show_balances(): None
+    }
+
+    class Split {
+        - user: User
+        - amount: float
+        --
+        + __init__(user: User, amount: float)
+        + get_user(): User
+        + get_amount(): float
+        + set_amount(amount: float): None
+    }
+}
+
+package "⚙️ Strategy Layer" #E8F5E8 {
+    abstract class SplitStrategy {
+        + {abstract} calculate_splits(total_amount: float, paid_by: User, participants: list[User], split_values: Optional[list[float]]): list[Split]
+    }
+
+    class EqualSplitStrategy {
+        + calculate_splits(total_amount: float, paid_by: User, participants: list[User], split_values: Optional[list[float]]): list[Split]
+    }
+
+    class PercentSplitStrategy {
+        + calculate_splits(total_amount: float, paid_by: User, participants: list[User], split_values: Optional[list[float]]): list[Split]
+        - validate_split_values(split_values: list[float], participants: list[User]): bool
+    }
+
+    class ExactSplitStrategy {
+        + calculate_splits(total_amount: float, paid_by: User, participants: list[User], split_values: Optional[list[float]]): list[Split]
+        - validate_split_values(split_values: list[float], participants: list[User], total_amount: float): bool
+    }
+}
+
+package "🔨 Builder Layer" #FFF3E0 {
+    class ExpenseBuilder {
+        - id: str
+        - description: str
+        - amount: float
+        - paid_by: User
+        - participants: list[User]
+        - split_strategy: SplitStrategy
+        - split_values: Optional[list[float]]
+        --
+        + __init__()
+        + set_id(id: str): ExpenseBuilder
+        + set_description(description: str): ExpenseBuilder
+        + set_amount(amount: float): ExpenseBuilder
+        + set_paid_by(paid_by: User): ExpenseBuilder
+        + set_participants(participants: list[User]): ExpenseBuilder
+        + set_split_strategy(split_strategy: SplitStrategy): ExpenseBuilder
+        + set_split_values(split_values: list[float]): ExpenseBuilder
+        - validate_expense(): None
+        + build(): Expense
+    }
+}
+
+package "👁️ Observer Layer" #FCE4EC {
+    abstract class Observer {
+        + {abstract} update(data: Optional[Any], message: Optional[str]): None
+    }
+
+    abstract class Subject {
+        - _observers: list[Observer]
+        --
+        + __init__()
+        + add_observer(observer: Observer): None
+        + remove_observer(observer: Observer): None
+        + {abstract} notify_observers(data: Optional[Any], message: Optional[str]): None
+    }
+
+    class GroupSubject {
+        + notify_observers(data: Optional[Any], message: str): None
+    }
+
+    class ExpenseSubject {
+        + notify_observers(data: Optional[Any], message: Optional[str]): None
+    }
+
+    class TransactionSubject {
+        + notify_observers(data: Optional[Any], message: Optional[str]): None
+    }
+}
+
+package "📋 Enums" #F1F8E9 {
+    enum SplitType {
+        EQUAL
+        EXACT
+        PERCENTAGE
+    }
+
+    enum TransactionStatus {
+        PENDING
+        COMPLETED
+        FAILED
+    }
+}
+
+' Data Flow Relationships
+SplitWiseService ||--|| UserService : uses
+SplitWiseService ||--|| GroupService : uses
+SplitWiseService ..> User : creates
+SplitWiseService ..> Group : creates
+
+UserService ||--o{ User : manages
+GroupService ||--o{ Group : manages
+
+User ||--|| BalanceSheet : owns
+User ||--o{ Group : member of
+User ..|> Observer : implements
+
+Group ||--o{ Expense : contains
+Group ||--o{ User : has members
+Group ..|> GroupSubject : extends
+
+Expense ||--o{ Split : contains
+Expense ||--|| User : paid by
+Expense ||--o{ User : participants
+Expense ||--|| SplitStrategy : uses
+Expense ..|> ExpenseSubject : extends
+
+Transaction ||--|| User : from user
+Transaction ||--|| User : to user
+Transaction ..|> TransactionSubject : extends
+
+Split ||--|| User : for user
+
+BalanceSheet ||--o{ User : tracks balances with
+
+ExpenseBuilder ..> Expense : builds
+ExpenseBuilder ..> SplitStrategy : uses
+
+SplitStrategy <|-- EqualSplitStrategy : implements
+SplitStrategy <|-- PercentSplitStrategy : implements
+SplitStrategy <|-- ExactSplitStrategy : implements
+
+Subject <|-- GroupSubject : extends
+Subject <|-- ExpenseSubject : extends
+Subject <|-- TransactionSubject : extends
+
+Transaction --> TransactionStatus : uses
+ExpenseBuilder --> SplitType : uses
+
+' Data Flow Annotations
+note right of SplitWiseService : 🔒 Singleton Pattern\nThread-safe instance creation\n🏛️ Facade Pattern\nSimplified interface
+
+note right of ExpenseBuilder : 🔨 Builder Pattern\nComplex object construction\nwith validation
+
+note right of SplitStrategy : ⚙️ Strategy Pattern\nDifferent splitting algorithms\n(EQUAL, PERCENTAGE, EXACT)
+
+note right of Observer : 👁️ Observer Pattern\nReal-time notifications\nfor events
+
+note right of Group : 🧮 Debt Simplification\nAlgorithm using heaps\nto minimize transactions
+
+note right of BalanceSheet : 🔒 Thread Safety\nLock-based concurrent\nbalance updates
+
+' Data Flow Sequence
+SplitWiseService ..> UserService : 1. User Request
+UserService ..> User : 2. Create User
+User ..> BalanceSheet : 3. Initialize Balance
+SplitWiseService ..> GroupService : 4. Group Request
+GroupService ..> Group : 5. Create Group
+Group ..> User : 6. Add Members
+ExpenseBuilder ..> Expense : 7. Build Expense
+Expense ..> SplitStrategy : 8. Calculate Splits
+SplitStrategy ..> Split : 9. Create Splits
+Group ..> BalanceSheet : 10. Update Balances
+Group ..> Transaction : 11. Simplify Debts
+Transaction ..> User : 12. Notify Users
+
+@enduml

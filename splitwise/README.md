@@ -137,15 +137,25 @@ class SplitWiseService:
 
 ### UML Class Diagram
 
-![UML Class Diagram](UML_Class_Diagram.md)
+**📊 Complete UML Class Diagram**: [Splitwise_UML_Diagram.puml](Splitwise_UML_Diagram.puml) - Complete class structure with design patterns
 
-**PlantUML Source**: [UML_Class_Diagram.puml](UML_Class_Diagram.puml)
+**🔄 Data Flow Diagram**: [Splitwise_Data_Flow_Diagram.puml](Splitwise_Data_Flow_Diagram.puml) - Process flow and class interactions
+
+**📋 Sequence Diagram**: [Splitwise_Sequence_Diagram.puml](Splitwise_Sequence_Diagram.puml) - Detailed interaction sequences
+
+**🖼️ PNG Generation Guide**: [PNG_Generation_Guide.md](PNG_Generation_Guide.md) - How to convert PlantUML to PNG images
 
 ### Pictorial Visual Diagrams
 
 **📊 Visual UML Diagram**: [VISUAL_UML_DIAGRAM.md](VISUAL_UML_DIAGRAM.md) - Detailed pictorial representation with emojis and visual elements
 
 **🎨 Pictorial Flow Diagram**: [PICTORIAL_FLOW_DIAGRAM.md](PICTORIAL_FLOW_DIAGRAM.md) - Easy-to-understand flow diagrams and component interactions
+
+### Image-Ready Diagrams
+
+**🖼️ Visual Image Diagram**: [VISUAL_IMAGE_DIAGRAM.md](VISUAL_IMAGE_DIAGRAM.md) - Mermaid diagrams that render as actual images in GitHub
+
+**📐 ASCII Art Diagram**: [ASCII_ART_DIAGRAM.md](ASCII_ART_DIAGRAM.md) - ASCII art diagrams that can be converted to images
 
 ### Clean Architecture Layers
 
@@ -210,11 +220,10 @@ splitwise/
 │       └── transaction_observer.py # Transaction event notifications
 ├── run.py                        # Comprehensive demo script
 ├── README.md                     # This file
-├── UML_Class_Diagram.puml        # PlantUML class diagram source
-├── UML_Class_Diagram.md          # Mermaid class diagram (GitHub compatible)
-├── VISUAL_UML_DIAGRAM.md         # Pictorial UML with emojis and visual elements
-├── PICTORIAL_FLOW_DIAGRAM.md     # Easy-to-understand flow diagrams
-├── ARCHITECTURE_DIAGRAM.md       # Text-based architecture diagram
+├── Splitwise_UML_Diagram.puml    # Complete UML class diagram (PNG ready)
+├── Splitwise_Data_Flow_Diagram.puml # Data flow diagram (PNG ready)
+├── Splitwise_Sequence_Diagram.puml # Sequence diagram (PNG ready)
+├── PNG_Generation_Guide.md       # Guide to convert PlantUML to PNG
 └── venv/                         # Virtual environment
 ```
 
