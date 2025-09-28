@@ -141,6 +141,12 @@ class SplitWiseService:
 
 **PlantUML Source**: [UML_Class_Diagram.puml](UML_Class_Diagram.puml)
 
+### Pictorial Visual Diagrams
+
+**📊 Visual UML Diagram**: [VISUAL_UML_DIAGRAM.md](VISUAL_UML_DIAGRAM.md) - Detailed pictorial representation with emojis and visual elements
+
+**🎨 Pictorial Flow Diagram**: [PICTORIAL_FLOW_DIAGRAM.md](PICTORIAL_FLOW_DIAGRAM.md) - Easy-to-understand flow diagrams and component interactions
+
 ### Clean Architecture Layers
 
 ```
@@ -206,6 +212,9 @@ splitwise/
 ├── README.md                     # This file
 ├── UML_Class_Diagram.puml        # PlantUML class diagram source
 ├── UML_Class_Diagram.md          # Mermaid class diagram (GitHub compatible)
+├── VISUAL_UML_DIAGRAM.md         # Pictorial UML with emojis and visual elements
+├── PICTORIAL_FLOW_DIAGRAM.md     # Easy-to-understand flow diagrams
+├── ARCHITECTURE_DIAGRAM.md       # Text-based architecture diagram
 └── venv/                         # Virtual environment
 ```
 
