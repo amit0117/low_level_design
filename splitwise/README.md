@@ -33,6 +33,7 @@ This project implements a complete expense splitting system similar to Splitwise
 ## ✨ Features
 
 ### Core Features
+
 - ✅ **User Account Creation & Profile Management**
 - ✅ **Comprehensive Group Management** (create, add/remove members)
 - ✅ **Multiple Split Strategies** (Equal, Exact, Percentage)
@@ -44,6 +45,7 @@ This project implements a complete expense splitting system similar to Splitwise
 - ✅ **Data Consistency** in multi-threaded environment
 
 ### Advanced Features
+
 - 🔄 **Debt Simplification Algorithm** - Minimizes transactions using heap-based optimization
 - 🎯 **Clean Observer Pattern** - Method-specific notifications (expense_update, transaction_update, update_group)
 - 🏗️ **Service Layer Architecture** - Clean separation of concerns
@@ -53,11 +55,12 @@ This project implements a complete expense splitting system similar to Splitwise
 ## 🎨 Design Patterns
 
 ### 1. Singleton Pattern
+
 ```python
 class SplitWiseService:
     _instance = None
     _lock = threading.Lock()
-    
+
     @classmethod
     def get_instance(cls):
         if cls._instance is None:
@@ -68,6 +71,7 @@ class SplitWiseService:
 ```
 
 ### 2. Builder Pattern
+
 ```python
 expense = (
     ExpenseBuilder()
@@ -81,11 +85,12 @@ expense = (
 ```
 
 ### 3. Strategy Pattern
+
 ```python
 # Equal Split Strategy
 class EqualSplitStrategy(SplitStrategy):
     def calculate_splits(self, total_amount, paid_by, participants, split_values):
-        return [Split(participant, total_amount / len(participants)) 
+        return [Split(participant, total_amount / len(participants))
                 for participant in participants if participant != paid_by]
 
 # Percentage Split Strategy
@@ -97,31 +102,33 @@ class PercentSplitStrategy(SplitStrategy):
 ```
 
 ### 4. Observer Pattern
+
 ```python
 class User(Observer):
     def expense_update(self, expense: Expense, message: str):
         print(f"💰 Expense Notification for {self.name}: {message}")
         print(f"   📝 Description: {expense.get_description()}")
         print(f"   💵 Amount: ₹{expense.get_amount():.2f}")
-    
+
     def transaction_update(self, transaction: Transaction):
         if transaction.get_status() == TransactionStatus.COMPLETED:
             print(f"{transaction.get_to_user().get_name()} has paid {transaction.get_from_user().get_name()} ₹{transaction.get_amount()}")
-    
+
     def update_group(self, message: str):
         print(f"Notification for {self.name}: {message}")
 ```
 
 ### 5. Facade Pattern
+
 ```python
 class SplitWiseService:
     def __init__(self):
         self.user_service = UserService()
         self.group_service = GroupService()
-    
+
     def add_user(self, name: str, email: str) -> User:
         return self.user_service.create_user(name, email)
-    
+
     def add_group(self, name: str, members: list[User]) -> Group:
         return self.group_service.create_group(name, members)
 ```
@@ -197,24 +204,28 @@ splitwise/
 ## 🚀 Installation & Setup
 
 ### Prerequisites
+
 - Python 3.8+
 - pip (Python package manager)
 
 ### Setup Instructions
 
 1. **Clone the repository**
+
 ```bash
 git clone <repository-url>
 cd splitwise
 ```
 
 2. **Create virtual environment**
+
 ```bash
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
 3. **Install dependencies**
+
 ```bash
 pip install -r requirements.txt  # If requirements.txt exists
 # Or install manually:
@@ -222,6 +233,7 @@ pip install typing-extensions
 ```
 
 4. **Run the demo**
+
 ```bash
 python run.py
 ```
@@ -284,7 +296,7 @@ def concurrent_expense_creation(expense_data):
         .set_participants(expense_data['participants']) \
         .set_split_strategy(EqualSplitStrategy()) \
         .build()
-    
+
     service.add_expense_to_group(expense_data['group_id'], expense)
     return expense
 
@@ -301,7 +313,7 @@ with ThreadPoolExecutor(max_workers=3) as executor:
 class SplitWiseService:
     @classmethod
     def get_instance(cls) -> 'SplitWiseService'
-    
+
     def add_user(self, name: str, email: str) -> User
     def add_group(self, name: str, members: list[User]) -> Group
     def add_expense_to_group(self, group_id: str, expense: Expense) -> None
@@ -318,7 +330,7 @@ class User(Observer):
     def get_name(self) -> str
     def get_email(self) -> str
     def get_balance_sheet(self) -> BalanceSheet
-    
+
     # Observer methods
     def expense_update(self, expense: Expense, message: str) -> None
     def transaction_update(self, transaction: Transaction) -> None
@@ -342,7 +354,7 @@ class Group(GroupSubject):
 ```python
 class SplitStrategy(ABC):
     @abstractmethod
-    def calculate_splits(self, total_amount: float, paid_by: User, 
+    def calculate_splits(self, total_amount: float, paid_by: User,
                         participants: list[User], split_values: Optional[list[float]]) -> list[Split]
 
 class EqualSplitStrategy(SplitStrategy):
