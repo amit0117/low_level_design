@@ -1,22 +1,25 @@
 import threading
 from typing import List, Optional
-import uuid
-from app.models.menu import Menu
-from app.models.inventory import Inventory
+from app.services.table_service import TableService
+from app.services.order_service import OrderService
+from app.services.inventory_service import InventoryService
+from app.services.staff_service import StaffService
+from app.services.menu_service import MenuService
 from app.models.staff import Manager, Chef, Waiter
 from app.models.table import Table
 from app.models.item import Item
 from app.models.order import Order
 from app.models.order_item import OrderItem
-from app.models.customer import Customer
-from app.commands.order_command import PrepareOrderCommand, ServeOrderCommand
 from app.decorators.bill_decorator import TaxDecorator, ServiceChargeDecorator, DiscountDecorator
 from app.strategies.payment_strategy import PaymentStrategy, Payment
-from app.exceptions.inventory import InsufficientStockException
-from app.exceptions.item import MissingItemException
 
 
 class RestrauntManagementApp:
+    """
+    Facade class that provides a simplified interface to the restaurant management system.
+    This class coordinates between repositories and services to provide high-level operations.
+    """
+
     _instance = None
     _lock = threading.Lock()
 
@@ -30,13 +33,14 @@ class RestrauntManagementApp:
 
     def __init__(self) -> None:
         if not self._initialized:
-            self.menu = Menu()
-            self.inventory = Inventory()
-            self.managers: List[Manager] = []
-            self.chefs: List[Chef] = []
-            self.waiters: List[Waiter] = []
-            self.tables: List[Table] = []
-            self.orders: List[Order] = []
+            # Initialize services - repositories are now singletons
+            # Each service will get the same repository instance automatically
+            self.table_service = TableService()
+            self.order_service = OrderService()
+            self.inventory_service = InventoryService()
+            self.staff_service = StaffService()
+            self.menu_service = MenuService()
+
             self.processing_lock = threading.Lock()
             self._initialized = True
 
@@ -44,186 +48,127 @@ class RestrauntManagementApp:
     def get_instance(cls) -> "RestrauntManagementApp":
         return cls()
 
-    def add_manager(self, manager: Manager) -> None:
-        self.managers.append(manager)
+    # ==================== FACADE METHODS - SIMPLIFIED INTERFACE ====================
 
-    def add_chef(self, chef: Chef) -> None:
-        self.chefs.append(chef)
-
-    def add_waiter(self, waiter: Waiter) -> None:
-        self.waiters.append(waiter)
-
+    # Table Management Facade Methods
     def add_table(self, table: Table) -> None:
-        self.tables.append(table)
+        """Add table to the system"""
+        self.table_service.add_table(table)
 
-    def get_available_tables(self) -> list[Table]:
-        return [table for table in self.tables if table.is_available()]
-
-    def get_menu(self) -> Menu:
-        return self.menu
-
-    def add_item_to_menu(self, item: Item) -> None:
-        self.menu.add_item(item)
-
-    def remove_item_from_menu(self, item: Item) -> None:
-        self.menu.remove_item(item)
-
-    def get_inventory(self) -> Inventory:
-        return self.inventory
-
-    def add_item_to_inventory(self, item: Item, quantity: int) -> None:
-        self.inventory.add_item(item, quantity)
-
-    def remove_item_from_inventory(self, item: Item, quantity: int) -> None:
-        self.inventory.remove_item(item, quantity)
-
-    def get_chefs(self) -> list[Chef]:
-        return self.chefs
-
-    def get_waiters(self) -> list[Waiter]:
-        return self.waiters
-
-    def get_managers(self) -> list[Manager]:
-        return self.managers
-
-    def get_tables(self) -> list[Table]:
-        return self.tables
-
-    def create_order(self, table: Table, order_items: list[OrderItem], ordered_by: str) -> Order:
-        with self.processing_lock:
-            order = Order(table.get_table_number(), order_items, ordered_by)
-            self.orders.append(order)
-            return order
-
-    def get_orders(self) -> list[Order]:
-        return self.orders
-
-    def get_order_by_id(self, order_id: str) -> Optional[Order]:
-        return next((order for order in self.orders if order.get_order_id() == order_id), None)
-
-    # Table Management
     def reserve_table(self, table_number: int, customer_name: str, size: int) -> bool:
-        table = next((t for t in self.tables if t.get_table_number() == table_number), None)
-        with self.processing_lock:
-            if table and table.is_available() and size <= table.get_capacity():
-                table.reserve_table()
-                print(f"Table {table_number} reserved for {customer_name}")
-                return True
-
-        print(f"Table {table_number} not found or not available or size is too large")
-        return False
+        """Reserve a table for a customer"""
+        return self.table_service.reserve_table(table_number, customer_name, size)
 
     def occupy_table(self, table_number: int) -> bool:
-        table = next((t for t in self.tables if t.get_table_number() == table_number), None)
-        if table and (table.is_available() or table.is_reserved()):
-            table.occupy_table()
-            print(f"Table {table_number} is now occupied")
-            return True
-        return False
+        """Occupy a table"""
+        return self.table_service.occupy_table(table_number)
 
     def release_table(self, table_number: int) -> bool:
-        table = next((t for t in self.tables if t.get_table_number() == table_number), None)
-        if table and table.is_occupied():
-            table.release_table()
-            print(f"Table {table_number} is now available")
-            return True
-        return False
+        """Release a table"""
+        return self.table_service.release_table(table_number)
 
-    # Order Processing
-    def create_order_with_items(self, table_number: int, customer_name: str, item_orders: List[OrderItem]) -> Optional[Order]:
-        """Create an order with multiple items
-        item_orders format: [{"item_name": "Pizza", "quantity": 2}, ...]
-        """
+    def get_available_tables(self) -> List[Table]:
+        """Get all available tables"""
+        return self.table_service.get_available_tables()
+
+    def get_tables(self) -> List[Table]:
+        """Get all tables"""
+        return self.table_service.get_all_tables()
+
+    # Staff Management Facade Methods
+    def add_manager(self, manager: Manager) -> None:
+        """Add manager to the system"""
+        self.staff_service.add_staff_member(manager)
+
+    def add_chef(self, chef: Chef) -> None:
+        """Add chef to the system"""
+        self.staff_service.add_staff_member(chef)
+
+    def add_waiter(self, waiter: Waiter) -> None:
+        """Add waiter to the system"""
+        self.staff_service.add_staff_member(waiter)
+
+    def get_chefs(self) -> List[Chef]:
+        """Get all chefs"""
+        return self.staff_service.get_all_chefs()
+
+    def get_waiters(self) -> List[Waiter]:
+        """Get all waiters"""
+        return self.staff_service.get_all_waiters()
+
+    def get_managers(self) -> List[Manager]:
+        """Get all managers"""
+        return self.staff_service.get_all_managers()
+
+    # Menu Management Facade Methods
+    def get_menu(self) -> MenuService:
+        """Get menu service"""
+        return self.menu_service
+
+    def add_item_to_menu(self, item: Item) -> None:
+        """Add item to menu"""
+        self.menu_service.add_item_to_menu(item)
+
+    def remove_item_from_menu(self, item: Item) -> None:
+        """Remove item from menu"""
+        self.menu_service.remove_item_from_menu(item)
+
+    # Inventory Management Facade Methods
+    def get_inventory(self) -> InventoryService:
+        """Get inventory service"""
+        return self.inventory_service
+
+    def add_item_to_inventory(self, item: Item, quantity: int) -> None:
+        """Add item to inventory"""
+        self.inventory_service.add_item_to_inventory(item, quantity)
+
+    def remove_item_from_inventory(self, item: Item, quantity: int) -> None:
+        """Remove item from inventory"""
+        self.inventory_service.remove_item_from_inventory(item, quantity)
+
+    # Order Management Facade Methods
+    def create_order(self, table: Table, order_items: List[OrderItem], ordered_by: str) -> Order:
+        """Create order (legacy method for compatibility)"""
         with self.processing_lock:
-            # Find table and customer
-            table = next((t for t in self.tables if t.get_table_number() == table_number), None)
+            # Use OrderService to create order
+            return self.order_service.create_order(table.get_table_number(), ordered_by, order_items)
 
-            if not table or not table.is_occupied():
-                print(f"Table {table_number} not found or not occupied")
-                return None
+    def create_order_with_items(self, table_number: int, customer_name: str, item_orders: List[OrderItem]) -> Optional[Order]:
+        """Create order with items - delegates to OrderService"""
+        return self.order_service.create_order(table_number, customer_name, item_orders)
 
-            # Create order items
-            order_items = []
-            order_id = str(uuid.uuid4())
-            customer = Customer(customer_name)
-            for item_order in item_orders:
-                item_name = item_order.get_item().get_name()
-                quantity = item_order.get_quantity()
+    def get_orders(self) -> List[Order]:
+        """Get all orders"""
+        return self.order_service.get_all_orders()
 
-                # Find item in menu
-                menu_item = next((item for item in self.menu.get_items() if item.get_name().lower() == item_name.lower()), None)
-                if not menu_item:
-                    raise MissingItemException(f"Item {item_name} not found in menu")
-                # Check inventory
-
-                if self.inventory.get_item_quantity(menu_item) < quantity:
-                    raise InsufficientStockException(f"Insufficient stock for {item_name}")
-
-                # Create order item
-                order_item = OrderItem(order_id, menu_item, quantity)  # order_id will be set when order is created
-                order_items.append(order_item)
-
-            # Create order
-            order = Order(table_number, order_items, customer)
-            self.orders.append(order)
-
-            print(f"Order {order.get_order_id()} created for table {table_number}")
-            return order
+    def get_order_by_id(self, order_id: str) -> Optional[Order]:
+        """Get order by ID"""
+        return self.order_service.get_order_by_id(order_id)
 
     def process_order(self, order_id: str) -> bool:
-        """Process an order by assigning chef and starting preparation"""
-        order = self.get_order_by_id(order_id)
-        if not order:
-            print(f"Order {order_id} not found")
-            return False
-
-        if not self.chefs:
+        """Process order - delegates to OrderService"""
+        chef = self.staff_service.get_available_chef()
+        if not chef:
             print("No chefs available")
             return False
-
-        chef = self.chefs[0]  # Assign first available chef
-
-        for order_item in order.get_items():
-            # Start preparation
-            prepare_command = PrepareOrderCommand(order_item, chef)
-            prepare_command.execute()
-
-            # Update inventory
-            self.inventory.remove_item(order_item.get_item().get_name(), order_item.get_quantity())
-
-        print(f"Order {order_id} is being prepared by chef {chef.get_name()}")
-        return True
+        return self.order_service.process_order(order_id, chef)
 
     def mark_order_items_ready(self, order_id: str) -> bool:
-        """Mark order items as ready for pickup"""
-        order = self.get_order_by_id(order_id)
-
-        for order_item in order.get_items():
-            order_item.make_ready_for_pickup()
-            print(f"Order item {order_item.get_item().get_name()} is ready for pickup")
-
-        return True
+        """Mark order items ready - delegates to OrderService"""
+        return self.order_service.mark_order_items_ready(order_id)
 
     def serve_order(self, order_id: str) -> bool:
-        """Serve an order using a waiter"""
-        order = self.get_order_by_id(order_id)
-        waiter = self.waiters[0]
-
-        if not order or not waiter:
-            print(f"Order {order_id} or waiter not found")
+        """Serve order - delegates to OrderService"""
+        waiter = self.staff_service.get_available_waiter()
+        if not waiter:
+            print("No waiters available")
             return False
+        return self.order_service.serve_order(order_id, waiter)
 
-        for order_item in order.get_items():
-            serve_command = ServeOrderCommand(order_item, waiter)
-            serve_command.execute()
-
-        print(f"Order {order_id} served by waiter {waiter.get_name()}")
-        return True
-
-    # Bill Generation
+    # Bill Generation Facade Methods
     def generate_bill(self, order_id: str, tax_rate: float = 0.18, service_charge: float = 50.0, discount_percentage: float = 0.0) -> dict:
-        """Generate a bill with tax, service charge, and optional discount"""
-        order = self.get_order_by_id(order_id)
+        """Generate bill with tax, service charge, and optional discount"""
+        order = self.order_service.get_order_by_id(order_id)
         if not order:
             return {"error": f"Order {order_id} not found"}
 
@@ -238,9 +183,92 @@ class RestrauntManagementApp:
             item_details[order_item.get_item().get_name()] = order_item.get_quantity()
 
         print(
-            f"Bill generated for order {order_id}\n table number: {order.get_table_number()}\n customer: {order.get_ordered_by().get_name()}\n items: {item_details}\n total: ₹{subtotal:.2f}"
+            f"Bill generated for order {order_id}\n"
+            f"table number: {order.get_table_number()}\n"
+            f"customer: {order.get_ordered_by().get_name()}\n"
+            f"items: {item_details}\n"
+            f"total: ₹{subtotal:.2f}"
         )
 
-    # Payment Processing
+    # Payment Processing Facade Methods
     def process_payment(self, payment_method: PaymentStrategy, amount: float) -> Payment:
+        """Process payment - delegates to payment strategy"""
         return payment_method.pay(amount)
+
+    # ==================== COMPLEX WORKFLOW METHODS ====================
+
+    def complete_dining_experience(
+        self, table_number: int, customer_name: str, item_orders: List[OrderItem], chef_name: str = None, waiter_name: str = None
+    ) -> Optional[Order]:
+        """
+        Complete dining experience workflow - a complex operation that orchestrates multiple services
+        This is a perfect example of Facade pattern simplifying complex operations
+        """
+        try:
+            # Step 1: Reserve table
+            if not self.reserve_table(table_number, customer_name, len(item_orders)):
+                return None
+
+            # Step 2: Occupy table
+            if not self.occupy_table(table_number):
+                return None
+
+            # Step 3: Create order
+            order = self.create_order_with_items(table_number, customer_name, item_orders)
+            if not order:
+                return None
+
+            # Step 4: Process order
+            if chef_name:
+                chef = self.staff_service.get_all_chefs()
+                chef = next((c for c in chef if c.get_name() == chef_name), None)
+                if chef:
+                    self.order_service.process_order(order.get_order_id(), chef)
+            else:
+                self.process_order(order.get_order_id())
+
+            # Step 5: Mark ready
+            self.mark_order_items_ready(order.get_order_id())
+
+            # Step 6: Serve order
+            if waiter_name:
+                waiters = self.staff_service.get_all_waiters()
+                waiter = next((w for w in waiters if w.get_name() == waiter_name), None)
+                if waiter:
+                    self.order_service.serve_order(order.get_order_id(), waiter)
+            else:
+                self.serve_order(order.get_order_id())
+
+            return order
+
+        except Exception as e:
+            print(f"Error in complete dining experience: {e}")
+            return None
+
+    def get_restaurant_status(self) -> dict:
+        """Get comprehensive restaurant status - orchestrates multiple services"""
+        table_status = self.table_service.get_table_status()
+        order_status = self.order_service.get_order_status()
+        staff_status = self.staff_service.get_staff_status()
+        inventory_status = self.inventory_service.get_inventory_status()
+
+        return {
+            "tables": table_status,
+            "orders": order_status,
+            "staff": staff_status,
+            "inventory": inventory_status,
+            "menu_items": len(self.menu_service.get_all_items()),
+        }
+
+    def print_restaurant_status(self) -> None:
+        """Print formatted restaurant status"""
+        status = self.get_restaurant_status()
+        print("\n" + "=" * 40)
+        print("RESTAURANT STATUS")
+        print("=" * 40)
+        print(f"Tables: {status['tables']['available']}/{status['tables']['total']} available")
+        print(f"Staff: {status['staff']['chefs']} chefs, {status['staff']['waiters']} waiters")
+        print(f"Orders: {status['orders']['active']}/{status['orders']['total']} active")
+        print(f"Menu Items: {status['menu_items']}")
+        print(f"Inventory: {status['inventory']['available_items']} items available")
+        print("=" * 40)

@@ -84,7 +84,7 @@ class RestaurantManagementSystemDemo:
         print("✓ Restaurant setup completed!")
         print(f"✓ Added {len(rms.get_chefs())} chefs, {len(rms.get_waiters())} waiters")
         print(f"✓ Added {len(rms.get_tables())} tables")
-        print(f"✓ Added {len(rms.get_menu().get_items())} menu items")
+        print(f"✓ Added {len(rms.get_menu().get_all_items())} menu items")
 
     @staticmethod
     def run_complete_workflow(rms: RestrauntManagementApp):
@@ -108,9 +108,9 @@ class RestaurantManagementSystemDemo:
 
         # Alice's order - create OrderItem objects
         alice_order_items = [
-            OrderItem("", rms.get_menu().get_items()[0], 1),  # Pizza
-            OrderItem("", rms.get_menu().get_items()[3], 1),  # Fries
-            OrderItem("", rms.get_menu().get_items()[4], 2),  # Coke
+            OrderItem("", rms.get_menu().get_all_items()[0], 1),  # Pizza
+            OrderItem("", rms.get_menu().get_all_items()[3], 1),  # Fries
+            OrderItem("", rms.get_menu().get_all_items()[4], 2),  # Coke
         ]
 
         try:
@@ -122,9 +122,9 @@ class RestaurantManagementSystemDemo:
 
         # Bob's order
         bob_order_items = [
-            OrderItem("", rms.get_menu().get_items()[2], 2),  # Burger
-            OrderItem("", rms.get_menu().get_items()[1], 1),  # Pasta
-            OrderItem("", rms.get_menu().get_items()[5], 1),  # Coffee
+            OrderItem("", rms.get_menu().get_all_items()[2], 2),  # Burger
+            OrderItem("", rms.get_menu().get_all_items()[1], 1),  # Pasta
+            OrderItem("", rms.get_menu().get_all_items()[5], 1),  # Coffee
         ]
 
         try:
@@ -191,7 +191,10 @@ class RestaurantManagementSystemDemo:
             rms.occupy_table(3)
 
         # Charlie's order
-        charlie_order_items = [OrderItem("", rms.get_menu().get_items()[0], 1), OrderItem("", rms.get_menu().get_items()[5], 2)]  # Pizza  # Coffee
+        charlie_order_items = [
+            OrderItem("", rms.get_menu().get_all_items()[0], 1),
+            OrderItem("", rms.get_menu().get_all_items()[5], 2),
+        ]  # Pizza  # Coffee
 
         try:
             charlie_order = rms.create_order_with_items(3, "Charlie Customer", charlie_order_items)
@@ -225,13 +228,13 @@ class RestaurantManagementSystemDemo:
         # Test out-of-stock
         rms.occupy_table(4)
         try:
-            rms.create_order_with_items(4, "David Customer", [OrderItem("", rms.get_menu().get_items()[0], 50)])  # Order more than available
+            rms.create_order_with_items(4, "David Customer", [OrderItem("", rms.get_menu().get_all_items()[0], 50)])  # Order more than available
         except Exception as e:
             print(f"✓ Out-of-stock handled: {type(e).__name__}")
 
         # Test table not occupied
         try:
-            rms.create_order_with_items(5, "Eve Customer", [OrderItem("", rms.get_menu().get_items()[0], 1)])
+            rms.create_order_with_items(5, "Eve Customer", [OrderItem("", rms.get_menu().get_all_items()[0], 1)])
         except Exception as e:
             print(f"✓ Table validation: {type(e).__name__}")
 
@@ -251,7 +254,7 @@ class RestaurantManagementSystemDemo:
 
         # Design patterns
         print("\n--- DESIGN PATTERNS ---")
-        print("✓ Singleton, Observer, State, Command, Decorator, Strategy, Facade")
+        print("✓ Repository, Service, Facade, Singleton, Observer, State, Command, Decorator, Strategy")
 
 
 if __name__ == "__main__":
