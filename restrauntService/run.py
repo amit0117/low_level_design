@@ -84,7 +84,7 @@ class RestaurantManagementSystemDemo:
         print("✓ Restaurant setup completed!")
         print(f"✓ Added {len(rms.get_chefs())} chefs, {len(rms.get_waiters())} waiters")
         print(f"✓ Added {len(rms.get_tables())} tables")
-        print(f"✓ Added {len(rms.get_menu().get_all_items())} menu items")
+        print(f"✓ Added {len(rms.get_menu().find_all_items())} menu items")
 
     @staticmethod
     def run_complete_workflow(rms: RestrauntManagementApp):
@@ -108,31 +108,23 @@ class RestaurantManagementSystemDemo:
 
         # Alice's order - create OrderItem objects
         alice_order_items = [
-            OrderItem("", rms.get_menu().get_all_items()[0], 1),  # Pizza
-            OrderItem("", rms.get_menu().get_all_items()[3], 1),  # Fries
-            OrderItem("", rms.get_menu().get_all_items()[4], 2),  # Coke
+            OrderItem("", rms.get_menu().find_all_items()[0], 1),  # Pizza
+            OrderItem("", rms.get_menu().find_all_items()[3], 1),  # Fries
+            OrderItem("", rms.get_menu().find_all_items()[4], 2),  # Coke
         ]
 
-        try:
-            alice_order = rms.create_order_with_items(1, "Alice", alice_order_items)
-            print(f"✓ Alice's order created: {alice_order.get_order_id()}")
-        except Exception as e:
-            print(f"✗ Error creating Alice's order: {e}")
-            alice_order = None
+        alice_order = rms.create_order_with_items(1, "Alice", alice_order_items)
+        print(f"✓ Alice's order created: {alice_order.get_order_id()}")
 
         # Bob's order
         bob_order_items = [
-            OrderItem("", rms.get_menu().get_all_items()[2], 2),  # Burger
-            OrderItem("", rms.get_menu().get_all_items()[1], 1),  # Pasta
-            OrderItem("", rms.get_menu().get_all_items()[5], 1),  # Coffee
+            OrderItem("", rms.get_menu().find_all_items()[2], 2),  # Burger
+            OrderItem("", rms.get_menu().find_all_items()[1], 1),  # Pasta
+            OrderItem("", rms.get_menu().find_all_items()[5], 1),  # Coffee
         ]
 
-        try:
-            bob_order = rms.create_order_with_items(2, "Bob", bob_order_items)
-            print(f"✓ Bob's order created: {bob_order.get_order_id()}")
-        except Exception as e:
-            print(f"✗ Error creating Bob's order: {e}")
-            bob_order = None
+        bob_order = rms.create_order_with_items(2, "Bob", bob_order_items)
+        print(f"✓ Bob's order created: {bob_order.get_order_id()}")
 
         # Scenario 3: Kitchen processing
         print("\n--- SCENARIO 3: Kitchen Processing ---")
@@ -192,63 +184,41 @@ class RestaurantManagementSystemDemo:
 
         # Charlie's order
         charlie_order_items = [
-            OrderItem("", rms.get_menu().get_all_items()[0], 1),
-            OrderItem("", rms.get_menu().get_all_items()[5], 2),
+            OrderItem("", rms.get_menu().find_all_items()[0], 1),
+            OrderItem("", rms.get_menu().find_all_items()[5], 2),
         ]  # Pizza  # Coffee
 
-        try:
-            charlie_order = rms.create_order_with_items(3, "Charlie Customer", charlie_order_items)
-            print(f"✓ Charlie's order created: {charlie_order.get_order_id()}")
+        charlie_order = rms.create_order_with_items(3, "Charlie Customer", charlie_order_items)
+        print(f"✓ Charlie's order created: {charlie_order.get_order_id()}")
 
-            # Process Charlie's order
-            rms.process_order(charlie_order.get_order_id())
-            time.sleep(1)
-            rms.mark_order_items_ready(charlie_order.get_order_id())
-            time.sleep(1)
-            rms.serve_order(charlie_order.get_order_id())
+        # Process Charlie's order
+        rms.process_order(charlie_order.get_order_id())
+        time.sleep(1)
+        rms.mark_order_items_ready(charlie_order.get_order_id())
+        time.sleep(1)
+        rms.serve_order(charlie_order.get_order_id())
 
-            # Generate bill and process payment
-            rms.generate_bill(charlie_order.get_order_id(), tax_rate=0.18, service_charge=50.0)
+        # Generate bill and process payment
+        rms.generate_bill(charlie_order.get_order_id(), tax_rate=0.18, service_charge=50.0)
 
-            # Process payment using Cash
-            cash_payment = CashPayment()
-            payment_result = rms.process_payment(cash_payment, 400.0)
-            print(f"Payment status: {payment_result.get_status().value}")
+        # Process payment using Cash
+        cash_payment = CashPayment()
+        payment_result = rms.process_payment(cash_payment, 400.0)
+        print(f"Payment status: {payment_result.get_status().value}")
 
-            if payment_result.get_status() == PaymentStatus.SUCCESS:
-                rms.release_table(3)
-                print("✓ Charlie's table released")
-
-        except Exception as e:
-            print(f"✗ Error processing Charlie's order: {e}")
+        if payment_result.get_status() == PaymentStatus.SUCCESS:
+            rms.release_table(3)
+            print("✓ Charlie's table released")
 
         # Scenario 6: Edge Cases
         print("\n--- SCENARIO 6: Edge Cases ---")
 
         # Test out-of-stock
         rms.occupy_table(4)
-        try:
-            rms.create_order_with_items(4, "David Customer", [OrderItem("", rms.get_menu().get_all_items()[0], 50)])  # Order more than available
-        except Exception as e:
-            print(f"✓ Out-of-stock handled: {type(e).__name__}")
+        rms.create_order_with_items(4, "David Customer", [OrderItem("", rms.get_menu().find_all_items()[0], 50)])  # Order more than available
 
         # Test table not occupied
-        try:
-            rms.create_order_with_items(5, "Eve Customer", [OrderItem("", rms.get_menu().get_all_items()[0], 1)])
-        except Exception as e:
-            print(f"✓ Table validation: {type(e).__name__}")
-
-        # Test payment failure
-        class FailingPayment:
-            def pay(self, amount: float):
-                from app.models.payment import Payment
-                from app.models.enums import PaymentMethod, PaymentStatus
-
-                return Payment(amount, PaymentMethod.CREDIT_CARD, PaymentStatus.FAILED)
-
-        payment_result = rms.process_payment(FailingPayment(), 100.0)
-        print(f"✓ Payment failure handled: {payment_result.get_status().value}")
-
+        rms.create_order_with_items(5, "Eve Customer", [OrderItem("", rms.get_menu().find_all_items()[0], 1)])
         # Final status
         print(f"\nFinal Status: {len(rms.get_available_tables())} tables available, {len(rms.get_orders())} orders processed")
 

@@ -3,8 +3,8 @@ from typing import List, Optional
 from app.services.table_service import TableService
 from app.services.order_service import OrderService
 from app.services.inventory_service import InventoryService
-from app.services.staff_service import StaffService
-from app.services.menu_service import MenuService
+from app.repositories.staff_repository import StaffRepository
+from app.repositories.menu_repository import MenuRepository
 from app.models.staff import Manager, Chef, Waiter
 from app.models.table import Table
 from app.models.item import Item
@@ -33,13 +33,12 @@ class RestrauntManagementApp:
 
     def __init__(self) -> None:
         if not self._initialized:
-            # Initialize services - repositories are now singletons
-            # Each service will get the same repository instance automatically
+            # Initialize services and repositories
             self.table_service = TableService()
             self.order_service = OrderService()
             self.inventory_service = InventoryService()
-            self.staff_service = StaffService()
-            self.menu_service = MenuService()
+            self.staff_repo = StaffRepository()
+            self.menu_repo = MenuRepository()
 
             self.processing_lock = threading.Lock()
             self._initialized = True
@@ -77,41 +76,32 @@ class RestrauntManagementApp:
 
     # Staff Management Facade Methods
     def add_manager(self, manager: Manager) -> None:
-        """Add manager to the system"""
-        self.staff_service.add_staff_member(manager)
+        self.staff_repo.save_manager(manager)
 
     def add_chef(self, chef: Chef) -> None:
-        """Add chef to the system"""
-        self.staff_service.add_staff_member(chef)
+        self.staff_repo.save_chef(chef)
 
     def add_waiter(self, waiter: Waiter) -> None:
-        """Add waiter to the system"""
-        self.staff_service.add_staff_member(waiter)
+        self.staff_repo.save_waiter(waiter)
 
     def get_chefs(self) -> List[Chef]:
-        """Get all chefs"""
-        return self.staff_service.get_all_chefs()
+        return self.staff_repo.find_all_chefs()
 
     def get_waiters(self) -> List[Waiter]:
-        """Get all waiters"""
-        return self.staff_service.get_all_waiters()
+        return self.staff_repo.find_all_waiters()
 
     def get_managers(self) -> List[Manager]:
-        """Get all managers"""
-        return self.staff_service.get_all_managers()
+        return self.staff_repo.find_all_managers()
 
     # Menu Management Facade Methods
-    def get_menu(self) -> MenuService:
-        """Get menu service"""
-        return self.menu_service
+    def get_menu(self) -> MenuRepository:
+        return self.menu_repo
 
     def add_item_to_menu(self, item: Item) -> None:
-        """Add item to menu"""
-        self.menu_service.add_item_to_menu(item)
+        self.menu_repo.save_item(item)
 
     def remove_item_from_menu(self, item: Item) -> None:
-        """Remove item from menu"""
-        self.menu_service.remove_item_from_menu(item)
+        self.menu_repo.delete_item(item)
 
     # Inventory Management Facade Methods
     def get_inventory(self) -> InventoryService:
@@ -147,7 +137,8 @@ class RestrauntManagementApp:
 
     def process_order(self, order_id: str) -> bool:
         """Process order - delegates to OrderService"""
-        chef = self.staff_service.get_available_chef()
+        chefs = self.staff_repo.find_all_chefs()
+        chef = chefs[0] if chefs else None
         if not chef:
             print("No chefs available")
             return False
@@ -159,7 +150,8 @@ class RestrauntManagementApp:
 
     def serve_order(self, order_id: str) -> bool:
         """Serve order - delegates to OrderService"""
-        waiter = self.staff_service.get_available_waiter()
+        waiters = self.staff_repo.find_all_waiters()
+        waiter = waiters[0] if waiters else None
         if not waiter:
             print("No waiters available")
             return False
@@ -219,25 +211,19 @@ class RestrauntManagementApp:
                 return None
 
             # Step 4: Process order
-            if chef_name:
-                chef = self.staff_service.get_all_chefs()
-                chef = next((c for c in chef if c.get_name() == chef_name), None)
-                if chef:
-                    self.order_service.process_order(order.get_order_id(), chef)
-            else:
-                self.process_order(order.get_order_id())
+            chefs = self.staff_repo.find_all_chefs()
+            chef = chefs[0] if chefs else None
+            if chef:
+                self.order_service.process_order(order.get_order_id(), chef)
 
             # Step 5: Mark ready
             self.mark_order_items_ready(order.get_order_id())
 
             # Step 6: Serve order
-            if waiter_name:
-                waiters = self.staff_service.get_all_waiters()
-                waiter = next((w for w in waiters if w.get_name() == waiter_name), None)
-                if waiter:
-                    self.order_service.serve_order(order.get_order_id(), waiter)
-            else:
-                self.serve_order(order.get_order_id())
+            waiters = self.staff_repo.find_all_waiters()
+            waiter = waiters[0] if waiters else None
+            if waiter:
+                self.order_service.serve_order(order.get_order_id(), waiter)
 
             return order
 
@@ -249,15 +235,18 @@ class RestrauntManagementApp:
         """Get comprehensive restaurant status - orchestrates multiple services"""
         table_status = self.table_service.get_table_status()
         order_status = self.order_service.get_order_status()
-        staff_status = self.staff_service.get_staff_status()
         inventory_status = self.inventory_service.get_inventory_status()
 
         return {
             "tables": table_status,
             "orders": order_status,
-            "staff": staff_status,
+            "staff": {
+                "managers": len(self.staff_repo.find_all_managers()),
+                "chefs": len(self.staff_repo.find_all_chefs()),
+                "waiters": len(self.staff_repo.find_all_waiters()),
+            },
             "inventory": inventory_status,
-            "menu_items": len(self.menu_service.get_all_items()),
+            "menu_items": len(self.menu_repo.find_all_items()),
         }
 
     def print_restaurant_status(self) -> None:
