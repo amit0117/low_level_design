@@ -39,7 +39,6 @@ This system follows a **layered architecture** with clear separation of concerns
 - **TableService**: Complex table state management and availability logic
 - **OrderService**: Order processing, validation, and workflow orchestration
 - **InventoryService**: Stock management and validation logic
-- **❌ Removed StaffService & MenuService**: These were just thin wrappers around repositories with no business logic
 
 ### ✅ **Direct Repository Access for Simple Operations**
 
