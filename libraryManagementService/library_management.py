@@ -53,12 +53,7 @@ class LibraryManagement:
         self.member_repository.add_member(member)
         return member
 
-    def add_item(self, title: str, author: str, item_type, status: Optional[ItemStatus] = None) -> LibraryItem:
-        if not title or not title.strip():
-            raise ValueError("Item title cannot be empty")
-        if not author or not author.strip():
-            raise ValueError("Item author cannot be empty")
-        item = LibraryItem(title.strip(), author.strip(), item_type, status)
+    def add_item(self, item: LibraryItem) -> LibraryItem:
         self.item_repository.add_item(item)
         return item
 

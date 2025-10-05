@@ -11,7 +11,7 @@ This demo showcases the complete end-to-end library management operations includ
 """
 
 from library_management import LibraryManagement
-from app.models.enums import ItemType, ItemStatus
+from app.models.enums import ItemStatus
 from app.strategies.payment_strategy import CreditCardPaymentStrategy, CashPaymentStrategy, BankTransferPaymentStrategy
 import time
 import random
@@ -19,6 +19,7 @@ from app.models.book import Book
 from app.models.member import Member
 from app.models.borrow import Borrow
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from app.factories.library_item_factory import BookFactory, MagazineFactory
 
 
 class LibraryManagementDemo:
@@ -73,25 +74,35 @@ class LibraryManagementDemo:
         # Scenario 1: Librarian Catalog Management
         print("\n--- SCENARIO 1: Librarian Catalog Management ---")
 
-        # Add various types of books to catalog
+        # Add various types of books to catalog using Factory Method pattern
         books: list[Book] = []
-        books.append(library.add_item("Python Programming Guide", "Guido van Rossum", ItemType.BOOK))
-        books.append(library.add_item("Design Patterns", "Gang of Four", ItemType.BOOK))
-        books.append(library.add_item("Clean Code", "Robert Martin", ItemType.BOOK))
-        books.append(library.add_item("System Design Interview", "Alex Xu", ItemType.BOOK))
-        books.append(library.add_item("National Geographic", "Various Authors", ItemType.MAGAZINE))
-        books.append(library.add_item("The Times", "Editorial Team", ItemType.NEWSPAPER))
-        books.append(library.add_item("Computer Science Journal", "Academic Authors", ItemType.JOURNAL))
 
-        print(f"✓ Added {len(books)} items to library catalog")
+        book_factory = BookFactory()  # Create books using factory pattern
+        book1 = book_factory.create_item("Python Programming Guide", "Guido van Rossum", 2020, 9780134685991)
+        book2 = book_factory.create_item("Design Patterns", "Gang of Four", 1994, 9780201633610)
+        book3 = book_factory.create_item("Clean Code", "Robert Martin", 2008, 9780132350884)
+        book4 = book_factory.create_item("System Design Interview", "Alex Xu", 2020, 9781736049112)
+
+        # Create magazines using factory pattern
+        magazine_factory = MagazineFactory()
+        magazine1 = magazine_factory.create_item("National Geographic", "Various Authors", 2023, 279356)
+
+        # Add created items to library
+        books.append(library.add_item(book1))
+        books.append(library.add_item(book2))
+        books.append(library.add_item(book3))
+        books.append(library.add_item(book4))
+        books.append(library.add_item(magazine1))
+
+        print(f"✓ Added {len(books)} items to library catalog using Factory Method pattern")
         for book in books:
             print(f"  - {book.get_title()} by {book.get_author()} ({book.get_type().value})")
 
         # Update book information (simulate catalog updates)
         print("\n--- Updating Catalog Information ---")
         # Mark some items as reference only
-        library.item_repository.get_item_by_id(books[6].get_id()).set_status(ItemStatus.REFERENCE_ONLY)
-        print(f"✓ Updated {books[6].get_title()} to reference only")
+        library.item_repository.get_item_by_id(books[3].get_id()).set_status(ItemStatus.REFERENCE_ONLY)
+        print(f"✓ Updated {books[3].get_title()} to reference only")
 
         # Scenario 2: Member Registration and Management
         print("\n--- SCENARIO 2: Member Registration & Management ---")
@@ -129,14 +140,17 @@ class LibraryManagementDemo:
 
         # Priya borrows books
         priya_borrows: list[Borrow] = []
-        priya_borrows.append(library.request_item(books[3].get_id(), members[1].get_id(), 14))
+        priya_borrows.append(library.request_item(books[4].get_id(), members[1].get_id(), 3))
         library.borrow_item(priya_borrows[0].get_id())
         print(f"✓ {members[1].get_name()} borrowed: {priya_borrows[0].get_item().get_title()}")
 
-        # Rajesh borrows a magazine
-        rajesh_borrow = library.request_item(books[4].get_id(), members[2].get_id(), 3)
-        library.borrow_item(rajesh_borrow.get_id())
-        print(f"✓ {members[2].get_name()} borrowed: {rajesh_borrow.get_item().get_title()}")
+        # Rajesh tries to borrow the reference-only book (should fail)
+        try:
+            rajesh_borrow = library.request_item(books[3].get_id(), members[2].get_id(), 14)
+            library.borrow_item(rajesh_borrow.get_id())
+            print(f"✓ {members[2].get_name()} borrowed: {rajesh_borrow.get_item().get_title()}")
+        except Exception as e:
+            print(f"✓ Reference-only book protection working: {str(e)}")
 
         # Scenario 4: Renewal Operations
         print("\n--- SCENARIO 4: Renewal Operations ---")
@@ -217,6 +231,7 @@ class LibraryManagementDemo:
         # Design patterns showcase
         print("\n--- DESIGN PATTERNS DEMONSTRATED ---")
         print("✓ Singleton: LibraryManagement system")
+        print("✓ Factory Method: Book and Magazine creation")
         print("✓ Strategy: Payment processing methods")
         print("✓ State: Item status management")
         print("✓ Observer: Item status notifications")
@@ -247,11 +262,14 @@ class LibraryManagementDemo:
         """Validate librarian catalog management functionality"""
         print("\n--- Librarian Catalog Management ---")
 
-        # Test adding books with different types
-        test_books = []
-        test_books.append(library.add_item("Test Book 1", "Test Author 1", ItemType.BOOK))
-        test_books.append(library.add_item("Test Magazine 1", "Test Editor 1", ItemType.MAGAZINE))
-        test_books.append(library.add_item("Test Journal 1", "Test Researcher 1", ItemType.JOURNAL))
+        # Test adding books with different types using factory pattern
+        test_books: list[Book] = []
+        book_factory = BookFactory()
+        magazine_factory = MagazineFactory()
+        test_book = book_factory.create_item("Test Book 1", "Test Author 1", 2023, 1234567890)
+        test_magazine = magazine_factory.create_item("Test Magazine 1", "Test Editor 1", 2023, 12345678)
+        test_books.append(library.add_item(test_book))
+        test_books.append(library.add_item(test_magazine))
 
         print(f"✓ Added {len(test_books)} test items to catalog")
 
@@ -260,8 +278,8 @@ class LibraryManagementDemo:
         print(f"✓ Updated item status: {test_books[0].get_title()} marked as damaged")
 
         # Test removing book (mark as withdrawn)
-        library.item_repository.get_item_by_id(test_books[2].get_id()).set_status(ItemStatus.WITHDRAWN)
-        print(f"✓ Removed item from circulation: {test_books[2].get_title()}")
+        library.item_repository.get_item_by_id(test_books[1].get_id()).set_status(ItemStatus.WITHDRAWN)
+        print(f"✓ Removed item from circulation: {test_books[1].get_title()}")
 
         # Validate catalog integrity
         all_items = library.item_repository.get_all_items()
@@ -560,8 +578,9 @@ class LibraryManagementDemo:
             "Clear Light of Day",
         ]
         for i in range(10):
-            book = library.add_item(indian_books[i], indian_authors[i], ItemType.BOOK)
-            bulk_books.append(book)
+            book_factory = BookFactory()
+            book = book_factory.create_item(indian_books[i], indian_authors[i], 2023, 1000000000 + i)
+            bulk_books.append(library.add_item(book))
 
         book_addition_time = time.time() - start_time
         print(f"✓ Performance: Added 10 books in {book_addition_time:.3f} seconds")

@@ -1,34 +1,26 @@
 from app.models.book import Book
 from app.models.magazine import Magazine
+from app.models.library_item import LibraryItem
 from abc import ABC, abstractmethod
 
 
 class LibraryItemFactory(ABC):
+    @staticmethod
     @abstractmethod
-    def create_item(self):
+    def create_item(title: str, author: str, publication_year: int, isbn: int) -> LibraryItem:
         raise NotImplementedError("Subclasses must implement this method")
 
 
 class BookFactory(LibraryItemFactory):
-    def __init__(self, title: str, author: str, publication_year: int, isbn: int):
-        self.title = title
-        self.author = author
-        self.publication_year = publication_year
-        self.isbn = isbn
-
-    def create_item(self):
-        return Book(self.title, self.author, self.publication_year, self.isbn)
+    @staticmethod
+    def create_item(title: str, author: str, publication_year: int, isbn: int) -> Book:
+        return Book(title, author, publication_year, isbn)
 
 
 class MagazineFactory(LibraryItemFactory):
-    def __init__(self, title: str, author: str, publication_year: int, issn: int):
-        self.title = title
-        self.author = author
-        self.publication_year = publication_year
-        self.issn = issn
-
-    def create_item(self):
-        return Magazine(self.title, self.author, self.publication_year, self.issn)
+    @staticmethod
+    def create_item(title: str, author: str, publication_year: int, issn: int) -> Magazine:
+        return Magazine(title, author, publication_year, issn)
 
 
 # For now keep only book and magazine
