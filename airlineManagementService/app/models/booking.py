@@ -51,7 +51,7 @@ class Booking(BookingSubject):
     def cancel(self) -> None:
         self.status = BookingStatus.CANCELLED
         for seat in self.seats:
-            seat.release()
+            seat.release_seat()
 
         # Also remove this user from the flight observers list
         self.flight.remove_observer(self.passenger)

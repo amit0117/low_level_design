@@ -1,5 +1,6 @@
 from app.models.seat import Seat
 from typing import TYPE_CHECKING
+import threading
 import time
 
 if TYPE_CHECKING:
@@ -11,7 +12,7 @@ class SeatLockManager:
         # store the locked seats who locked them
         # This will be used to unlock the seats after a timeout
         self.locked_seats: dict[Seat, "User"] = {}
-        self.default_lock_timeout = 2  # For demonstration purposes only, in real world, it would be in minutes
+        self.default_lock_timeout = 2  # For demonstration purposes only we kept it as 2 seconds, in real world, it would be in minutes
         self.flight_number = flight_number
 
     def lock_seats(self, seats: list[Seat], passenger: "User") -> bool:
@@ -21,6 +22,14 @@ class SeatLockManager:
         """
         # Sort the seats to ensure consistent locking order to avoid race conditions and deadlocks
         sorted_seats = sorted(seats, key=lambda x: x.get_seat_number())
+        print(
+            f"Locking seats for {passenger.get_name()} on flight {self.flight_number}, seats: [{", ".join([seat.get_seat_number() for seat in sorted_seats])}]"
+        )
+
+        # First check if the seats are already locked by same user and return True if they are
+        if all(seat in self.locked_seats and self.locked_seats[seat] == passenger for seat in sorted_seats):
+            print(f"Seats are already locked by {passenger.get_name()} on flight {self.flight_number}, Returning True")
+            return True
 
         # This will be used to unlock the seats if any error occurs because only the same user can unlock the seats
         # and is mandatory because if the same user has booked the seats in previous transaction and currently doing other transaction
@@ -36,9 +45,8 @@ class SeatLockManager:
                 if not seat.is_available():
                     self.release_seats(successfully_locked_seats, passenger)
                     return False
-
                 # lock the seat (Uses the state pattern to lock the seat)
-                seat.lock()
+                seat.lock_seat()
                 successfully_locked_seats[seat] = passenger
                 self.locked_seats[seat] = passenger  # will be used to unlock the seats after a timeout
 
@@ -53,17 +61,26 @@ class SeatLockManager:
             return True
 
     def release_seats_after_timeout(self, passenger: "User") -> None:
-        time.sleep(self.default_lock_timeout)
-        self.release_seats(self.locked_seats, passenger)
+        """Schedule seat release after timeout using a separate thread"""
+
+        def timeout_release():
+            time.sleep(self.default_lock_timeout)
+            self.release_seats(self.locked_seats, passenger)
+
+        # Start the timeout in a separate thread to avoid blocking
+        timeout_thread = threading.Thread(target=timeout_release, daemon=True)
+        timeout_thread.start()
 
     def release_seats(self, locked_seats: dict[Seat, "User"], passenger: "User") -> None:
-        for seat in locked_seats:
+        # Create a copy of keys to avoid RuntimeError: dictionary changed size during iteration
+        seats_to_release = list(locked_seats.keys())
+        for seat in seats_to_release:
             # Check if the seat is locked by the same user
             # Also check if the seat is still locked, because calling release() on a seat that is not locked will raise an RuntimeError
             # Because it might possible that seat has been booked and user has already released the seat
             if self.locked_seats[seat] != passenger or not seat.get_lock().locked():
                 continue
-            seat.release()
+            seat.release_seat()
             # Remove the seat from the locked seats
             self.locked_seats.pop(seat)
 

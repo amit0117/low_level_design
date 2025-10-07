@@ -67,7 +67,7 @@ class Flight(FlightSubject):
     def book_seats(self, seats: list[Seat], passenger: "User") -> None:
         # This should be called only if the seats are locked successfully
         for seat in seats:
-            seat.book()
+            seat.book_seat()
         # Add the passenger to the observers list
         self.add_observer(passenger)
 

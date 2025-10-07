@@ -37,6 +37,9 @@ class BookingService:
             available_seats = [seat for seat in flight.get_available_seats() if seat.get_seat_type() == seat_type]
             if len(available_seats) >= total_seat_required:
                 seats = available_seats[:total_seat_required]
+                print(
+                    f"Found {len(seats)} seats for {passenger.get_name()} on flight {flight.get_flight_number()}, seats: [{", ".join([seat.get_seat_number() for seat in seats])}]"
+                )
                 # check if the seats can be locked
                 if flight.lock_seats(seats, passenger):
                     return flight, seats
@@ -75,6 +78,7 @@ class BookingService:
         print(f"Boarding passenger {booking.get_passenger().get_name()} for booking {booking_id}")
         for seat in seats:
             seat.set_status(SeatStatus.OCCUPIED)
+            seat.release_seat()
 
     def cancel_booking(self, booking_id: str) -> None:
         booking = self.booking_repository.get_booking(booking_id)
@@ -89,4 +93,4 @@ class BookingService:
 
         # release the seats
         for seat in flight.get_all_seats().values():
-            seat.release()
+            seat.release_seat()
