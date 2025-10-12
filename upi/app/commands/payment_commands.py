@@ -69,11 +69,8 @@ class ExecutePaymentCommand(Command):
             payee_account = self.payment.get_payee_account()
             amount = self.payment.get_amount()
 
-            # Update local balances to match NPCI's successful transaction
-            payer_account.withdraw(amount)
-            payee_account.deposit(amount)
-
-            # Add transaction to account history
+            # NPCI has already handled the balance changes through BankAdapter
+            # Just add transaction to account history
             payer_account.add_transaction(self.transaction)
             payee_account.add_transaction(self.transaction)
 
@@ -90,8 +87,8 @@ class ExecutePaymentCommand(Command):
             amount = self.payment.get_amount()
 
             # Reverse the transaction: credit payer, debit payee
-            payer_account.deposit(amount)
-            payee_account.withdraw(amount)
+            # This should be handled by BankAdapter through NPCI refund
+            pass
 
         except Exception as e:
             self.set_error(f"Failed to reverse local account balances: {str(e)}")
@@ -190,8 +187,8 @@ class RefundCommand(Command):
             amount = self.original_payment.get_amount()
 
             # Reverse the original transaction: credit payer, debit payee
-            payer_account.deposit(amount)
-            payee_account.withdraw(amount)
+            # This should be handled by BankAdapter through NPCI refund
+            pass
 
         except Exception as e:
             self.set_error(f"Failed to reverse local account balances: {str(e)}")

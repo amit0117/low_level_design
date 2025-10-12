@@ -6,9 +6,61 @@ from app.models.enums import PaymentMethod, AccountType, Currency, PaymentType
 from app.repositories.user_respository import UserRepository
 from app.repositories.account_repository import AccountRepository
 from app.adapters.base_adapter import StandardizedResponse
+from app.commands.command_invoker import CommandInvoker
+from app.models.npci_instance import NPCI
 from typing import List, Optional, Dict
 from datetime import datetime, timedelta
 from collections import defaultdict
+
+
+class NPCIProxy:
+    """Proxy pattern for NPCI with fraud detection and security checks"""
+
+    def __init__(self, npci: NPCI):
+        self._npci = npci
+        self.fraud_threshold = 50000.0  # ₹50,000 threshold for fraud detection
+        self.suspicious_transactions = []
+
+    def process_payment(self, payer_vpa: str, payee_vpa: str, amount: float, payment_method: PaymentMethod) -> StandardizedResponse:
+        """Enhanced payment processing with fraud detection"""
+        print(f"🛡️ NPCI Proxy: Fraud detection check for ₹{amount}")
+
+        # Fraud detection checks
+        if self._is_suspicious_transaction(payer_vpa, payee_vpa, amount):
+            print(f"🚨 NPCI Proxy: Suspicious transaction detected!")
+            print(f"   Amount: ₹{amount} (above threshold ₹{self.fraud_threshold})")
+            print(f"   From: {payer_vpa}")
+            print(f"   To: {payee_vpa}")
+
+            # Log suspicious transaction
+            self.suspicious_transactions.append(
+                {"payer_vpa": payer_vpa, "payee_vpa": payee_vpa, "amount": amount, "timestamp": datetime.now(), "reason": "High value transaction"}
+            )
+
+            # For demo, allow but flag as suspicious
+            print(f"⚠️ NPCI Proxy: Allowing transaction but flagging as suspicious")
+
+        # Additional security checks
+        if self._is_rapid_transaction(payer_vpa):
+            print(f"⚡ NPCI Proxy: Rapid transaction detected for {payer_vpa}")
+            print(f"⚠️ NPCI Proxy: Allowing but monitoring")
+
+        # Call actual NPCI
+        print(f"🔄 NPCI Proxy: Forwarding to actual NPCI...")
+        return self._npci.process_payment(payer_vpa, payee_vpa, amount, payment_method)
+
+    def _is_suspicious_transaction(self, payer_vpa: str, payee_vpa: str, amount: float) -> bool:
+        """Check if transaction is suspicious"""
+        return amount > self.fraud_threshold
+
+    def _is_rapid_transaction(self, payer_vpa: str) -> bool:
+        """Check for rapid successive transactions"""
+        # Simple check - in real implementation, this would be more sophisticated
+        return False
+
+    def get_suspicious_transactions(self) -> List[Dict]:
+        """Get list of suspicious transactions"""
+        return self.suspicious_transactions
 
 
 class UPIApp:
@@ -16,6 +68,11 @@ class UPIApp:
         self.payment_service = PaymentService()
         self.user_repository = UserRepository()
         self.account_repository = AccountRepository()
+        self.command_invoker = CommandInvoker()
+
+        # Initialize NPCI with proxy for fraud detection
+        self.npci = NPCI.get_instance()
+        self.npci_proxy = NPCIProxy(self.npci)
 
         # Rate limiting at application level
         self.request_counts: Dict[str, List[datetime]] = defaultdict(list)
@@ -35,6 +92,8 @@ class UPIApp:
     def send_money(
         self, payer_vpa: str, payee_vpa: str, amount: float, payment_method: PaymentMethod = PaymentMethod.UPI_PUSH
     ) -> StandardizedResponse:
+        print(f"📱 UPI App: User request to send ₹{amount} from {payer_vpa} to {payee_vpa}")
+
         # Rate limiting check
         if self._is_rate_limited(payer_vpa):
             return StandardizedResponse(success=False, amount=amount, status="RATE_LIMITED")
@@ -42,12 +101,15 @@ class UPIApp:
         # Record request
         self._record_request(payer_vpa)
 
-        # Process payment
+        # Process payment through proxy (User App → Proxy → NPCI → Bank)
         payer_account = self.account_repository.get_account_by_vpa(payer_vpa)
         payee_account = self.account_repository.get_account_by_vpa(payee_vpa)
 
         payment = Payment(PaymentType.DEBIT, payment_method, amount, payer_account, payee_account, Currency.INR)
-        return self.payment_service.process_payment(payment)
+
+        # Use proxy for fraud detection before NPCI
+        print(f"🔄 UPI App: Processing through fraud detection proxy...")
+        return self.npci_proxy.process_payment(payer_vpa, payee_vpa, amount, payment_method)
 
     def request_money(self, requester_vpa: str, payer_vpa: str, amount: float) -> StandardizedResponse:
         return self.send_money(payer_vpa, requester_vpa, amount, PaymentMethod.UPI_PULL)
@@ -92,3 +154,7 @@ class UPIApp:
         # Cleanup old requests
         cutoff = now - timedelta(hours=1)
         self.request_counts[vpa] = [req for req in self.request_counts[vpa] if req > cutoff]
+
+    def get_suspicious_transactions(self) -> List[Dict]:
+        """Get list of suspicious transactions detected by fraud detection proxy"""
+        return self.npci_proxy.get_suspicious_transactions()

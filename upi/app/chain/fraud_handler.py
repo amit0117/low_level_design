@@ -19,28 +19,10 @@ class FraudHandler(PaymentHandler):
     - Follows Single Responsibility Principle
     """
 
-    def __init__(self):
-        super().__init__()
-        # Create fraud-enhanced processor
-        base_processor = ConcretePaymentProcessor()
-        self.fraud_processor = FraudCheckDecorator(base_processor)
-
     def _process(self, payment: "Payment") -> StandardizedResponse:
-        """
-        Process payment through fraud-enhanced processor
+        amount = payment.get_amount()
 
-        This handler:
-        1. Delegates fraud checking to FraudCheckDecorator
-        2. Handles chain flow control
-        3. Maintains chain responsibility pattern
-        """
+        if amount > 50000:
+            return StandardizedResponse(success=False, amount=amount, status="FRAUD_DETECTED")
 
-        # Delegate to fraud-enhanced processor
-        response = self.fraud_processor.process_payment(payment)
-
-        # If fraud check failed, stop the chain
-        if not response.success and response.status in ["FRAUD_DETECTED", "BLOCKED"]:
-            return response
-
-        # Fraud check passed, continue chain
-        return StandardizedResponse(success=True, amount=payment.get_amount(), status="FRAUD_CHECK_PASSED")
+        return StandardizedResponse(success=True, amount=amount, status="FRAUD_CHECK_PASSED")

@@ -350,3 +350,154 @@ class SBIAdapter(BankAPIAdapter):
             "transactionStatus": "SUCCESS",
             "sbiReferenceId": f"SBI_STATUS_{hash(transaction_id) % 10000:04d}",
         }
+
+
+class ICICIAdapter(BankAPIAdapter):
+    """Adapter for ICICI Bank API responses"""
+
+    def process_payment(self, request_data: Dict[str, Any]) -> StandardizedResponse:
+        """Process ICICI payment and standardize response"""
+        try:
+            icici_response = self._call_icici_api(request_data)
+
+            return StandardizedResponse(
+                success=icici_response.get("status") == "SUCCESS",
+                amount=request_data.get("amount", 0.0),
+                status="SUCCESS" if icici_response.get("status") == "SUCCESS" else "FAILED",
+            )
+        except Exception as e:
+            return self._create_error_response(request_data.get("amount", 0.0), str(e))
+
+    def check_balance(self, account_id: str) -> StandardizedResponse:
+        """Check ICICI account balance"""
+        try:
+            balance_response = self._call_icici_balance_api(account_id)
+
+            return StandardizedResponse(
+                success=balance_response.get("status") == "SUCCESS",
+                amount=balance_response.get("balance", 0.0),
+                status="SUCCESS" if balance_response.get("status") == "SUCCESS" else "FAILED",
+            )
+        except Exception as e:
+            return self._create_error_response(0.0, str(e))
+
+    def refund_payment(self, transaction_id: str, amount: float) -> StandardizedResponse:
+        """Process ICICI refund"""
+        try:
+            refund_response = self._call_icici_refund_api(transaction_id, amount)
+
+            return StandardizedResponse(
+                success=refund_response.get("status") == "SUCCESS",
+                amount=amount,
+                status="SUCCESS" if refund_response.get("status") == "SUCCESS" else "FAILED",
+            )
+        except Exception as e:
+            return self._create_error_response(amount, str(e))
+
+    def get_transaction_status(self, transaction_id: str) -> StandardizedResponse:
+        """Get ICICI transaction status"""
+        try:
+            status_response = self._call_icici_status_api(transaction_id)
+
+            return StandardizedResponse(
+                success=status_response.get("status") == "SUCCESS",
+                amount=0.0,
+                status=status_response.get("transactionStatus", "UNKNOWN"),
+            )
+        except Exception as e:
+            return self._create_error_response(0.0, str(e))
+
+    def _call_icici_api(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Process ICICI payment with actual debit/credit operations"""
+        try:
+            # Extract payment details
+            account_number = request_data.get("account_number", "")
+            amount = request_data.get("amount", 0.0)
+            transaction_type = request_data.get("transaction_type", "")
+            transaction_id = request_data.get("transaction_id", "")
+
+            # Get account from repository
+            account = self.account_repository.get_account(account_number)
+            if not account:
+                return {
+                    "status": "FAILED",
+                    "message": f"Account not found: {account_number}",
+                    "transactionId": "",
+                    "error": "Account not found",
+                }
+
+            icici_transaction_id = f"ICICI_{hash(str(request_data)) % 1000000:06d}"
+
+            if transaction_type == "DEBIT":
+                # Check sufficient funds and debit
+                if account.get_balance() < amount:
+                    return {
+                        "status": "FAILED",
+                        "message": "Insufficient funds",
+                        "transactionId": "",
+                        "error": "Insufficient funds",
+                    }
+                account.withdraw(amount)
+
+            elif transaction_type == "CREDIT":
+                # Credit the amount
+                account.deposit(amount)
+
+            # Update account in repository
+            self.account_repository.update_account(account)
+
+            return {
+                "status": "SUCCESS",
+                "transactionId": icici_transaction_id,
+                "message": f"ICICI {transaction_type} transaction successful",
+                "accountNumber": account_number,
+                "amount": amount,
+                "transactionType": transaction_type,
+                "timestamp": datetime.now().isoformat(),
+            }
+        except Exception as e:
+            return {
+                "status": "FAILED",
+                "message": f"Transaction failed: {str(e)}",
+                "transactionId": "",
+                "error": str(e),
+            }
+
+    def _call_icici_balance_api(self, account_id: str) -> Dict[str, Any]:
+        """Get ICICI account balance from repository"""
+        account = self.account_repository.get_account(account_id)
+        if not account:
+            return {
+                "status": "FAILED",
+                "message": f"Account not found: {account_id}",
+                "balance": 0.0,
+                "error": "Account not found",
+            }
+
+        return {
+            "status": "SUCCESS",
+            "balance": account.get_balance(),
+            "accountId": account_id,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    def _call_icici_refund_api(self, transaction_id: str, amount: float) -> Dict[str, Any]:
+        """Simulate ICICI refund API call"""
+        # Simulate ICICI refund response
+        return {
+            "status": "SUCCESS",
+            "refundId": f"ICICI_REFUND_{datetime.now().strftime('%Y%m%d%H%M%S')}",
+            "originalTransactionId": transaction_id,
+            "refundAmount": amount,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    def _call_icici_status_api(self, transaction_id: str) -> Dict[str, Any]:
+        """Simulate ICICI status API call"""
+        # Simulate ICICI status response
+        return {
+            "status": "SUCCESS",
+            "transactionId": transaction_id,
+            "transactionStatus": "COMPLETED",
+            "timestamp": datetime.now().isoformat(),
+        }

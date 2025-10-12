@@ -14,6 +14,7 @@ class Transaction(TransactionSubject):
         self,
         payment: "Payment",
     ):
+        super().__init__()  # Initialize TransactionSubject
         self.transaction_id = str(uuid4())
         self.transaction_status: TransactionStatus = TransactionStatus.PENDING
         self.transaction_state: TransactionState = PendingState()

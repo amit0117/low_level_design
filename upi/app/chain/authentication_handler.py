@@ -19,28 +19,11 @@ class AuthenticationHandler(PaymentHandler):
     - Follows Single Responsibility Principle
     """
 
-    def __init__(self):
-        super().__init__()
-        # Create authentication-enhanced processor
-        base_processor = ConcretePaymentProcessor()
-        self.auth_processor = SecureBankProxy(base_processor)
-
     def _process(self, payment: "Payment") -> StandardizedResponse:
-        """
-        Process payment through authentication-enhanced processor
+        amount = payment.get_amount()
+        payer_account = payment.get_payer_account()
 
-        This handler:
-        1. Delegates authentication to SecureBankProxy
-        2. Handles chain flow control
-        3. Maintains chain responsibility pattern
-        """
+        if not payer_account:
+            return StandardizedResponse(success=False, amount=amount, status="UNAUTHORIZED")
 
-        # Delegate to authentication-enhanced processor
-        response = self.auth_processor.process_payment(payment)
-
-        # If authentication failed, stop the chain
-        if not response.success and response.status in ["UNAUTHORIZED", "MAX_RETRIES_EXCEEDED"]:
-            return response
-
-        # Authentication passed, continue chain
-        return StandardizedResponse(success=True, amount=payment.get_amount(), status="AUTHENTICATED")
+        return StandardizedResponse(success=True, amount=amount, status="AUTHENTICATED")

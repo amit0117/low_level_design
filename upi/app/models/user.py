@@ -9,12 +9,12 @@ from uuid import uuid4
 
 
 class User(AccountObserver, TransactionObserver, PaymentObserver):
-    def __init__(self, name: str, email: str, password: str) -> None:
+    def __init__(self, name: str, phone: str, email: str) -> None:
         super().__init__()
         self.id = str(uuid4())
         self.name = name
+        self.phone = phone
         self.email = email
-        self.password = password
         self.accounts: list[Account] = []
 
     def get_id(self) -> str:
@@ -23,14 +23,14 @@ class User(AccountObserver, TransactionObserver, PaymentObserver):
     def get_name(self) -> str:
         return self.name
 
+    def get_phone(self) -> str:
+        return self.phone
+
     def get_email(self) -> str:
         return self.email
 
     def get_accounts(self) -> list[Account]:
         return self.accounts
-
-    def verify_password(self, password: str) -> bool:
-        return self.password == password
 
     def add_account(self, account: Account) -> None:
         print(f"New Account {account.get_account_number()} added to user {self.name}")

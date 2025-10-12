@@ -27,6 +27,7 @@ class PaymentStatus(Enum):
     EXPIRED = "EXPIRED"
     CANCELLED = "CANCELLED"
     COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
 
 
 class CommandStatus(Enum):
