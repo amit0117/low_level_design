@@ -1,6 +1,6 @@
 from uuid import uuid4
-from app.observers.base_observer import BaseObserver
-from app.mediator.auction_mediator import AuctionComponent
+from app.observers.auction_observer import AuctionObserver
+from app.mediator.auction_component import AuctionComponent
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -8,9 +8,9 @@ if TYPE_CHECKING:
     from app.models.auction import Auction
 
 
-class User(BaseObserver, AuctionComponent):
+class User(AuctionObserver, AuctionComponent):
     def __init__(self, name: str, email: str, password: str):
-        BaseObserver.__init__(self)
+        AuctionObserver.__init__(self)
         AuctionComponent.__init__(self)
         self.id = str(uuid4())
         self.name = name

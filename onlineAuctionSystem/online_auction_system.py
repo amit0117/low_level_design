@@ -1,5 +1,4 @@
-from app.chain.handler import AuctionChainBuilder, AuctionRequest
-from app.mediator.auction_mediator import AuctionMediator
+from app.chain.handler import AuctionChainBuilder
 from app.models.user import User
 from app.repositories.auction_repository import AuctionRepository
 from app.repositories.user_repository import UserRepository
@@ -11,7 +10,7 @@ from datetime import datetime
 from app.models.auction import Auction
 from app.models.enums import AuctionType
 from app.models.bid import Bid
-from app.commands.auction_command import PlaceBidCommand, RemoveBidCommand, StartAuctionCommand, EndAuctionCommand
+from app.commands.auction_command import PlaceBidCommand
 
 
 class OnlineAuctionSystem:
@@ -83,4 +82,3 @@ class OnlineAuctionSystem:
 
     def cancel_auction(self, auction: Auction) -> None:
         auction.cancel_auction()
-        

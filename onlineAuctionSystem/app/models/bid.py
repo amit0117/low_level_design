@@ -7,11 +7,11 @@ if TYPE_CHECKING:
 
 
 class Bid:
-    def __init__(self, user: "User", amount: float, item: "Auction"):
+    def __init__(self, user: "User", auction: "Auction", amount: float):
         self.id = str(uuid4())
         self.user = user
         self.amount = amount
-        self.item = item
+        self.auction = auction
 
     def get_id(self) -> str:
         return self.id
@@ -23,4 +23,4 @@ class Bid:
         return self.amount
 
     def get_auction(self) -> "Auction":
-        return self.item
+        return self.auction

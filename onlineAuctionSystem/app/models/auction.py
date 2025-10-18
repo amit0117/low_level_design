@@ -8,7 +8,7 @@ from app.observers.auction_observer import AuctionSubject
 from uuid import uuid4
 from app.state.auction_state import AuctionState, PendingAuctionState
 from app.strategies.auction_strategy import AuctionStrategy, EnglishAuctionStrategy, DutchAuctionStrategy, SealedBidAuctionStrategy
-from app.mediator.auction_mediator import AuctionComponent
+from app.mediator.auction_component import AuctionComponent
 
 
 if TYPE_CHECKING:
@@ -146,7 +146,10 @@ class Auction(AuctionSubject, AuctionComponent):
 
         # Add the bid
         self.add_bid(bid)
-        self.set_current_price(bid.get_amount())
+
+        # Update current price using strategy
+        new_price = self.auction_strategy.get_amount_to_settle_auction(self)
+        self.set_current_price(new_price)
 
         # Add user as observer if not already
         if not bid.get_user() in self.observers:
@@ -163,17 +166,17 @@ class Auction(AuctionSubject, AuctionComponent):
 
 class EnglishAuction(Auction):
     def __init__(self, owner: "User", item: "AuctionItem", start_time: datetime, end_time: datetime, starting_price: float = 0.0):
-        super().__init__(owner, item, start_time, end_time, AuctionType.ENGLISH, starting_price)
+        super().__init__(owner, item, start_time, end_time, starting_price, AuctionType.ENGLISH)
         self.auction_strategy = EnglishAuctionStrategy()
 
 
 class DutchAuction(Auction):
     def __init__(self, owner: "User", item: "AuctionItem", start_time: datetime, end_time: datetime, starting_price: float = 0.0):
-        super().__init__(owner, item, start_time, end_time, AuctionType.DUTCH, starting_price)
+        super().__init__(owner, item, start_time, end_time, starting_price, AuctionType.DUTCH)
         self.auction_strategy = DutchAuctionStrategy()
 
 
 class SealedBidAuction(Auction):
     def __init__(self, owner: "User", item: "AuctionItem", start_time: datetime, end_time: datetime, starting_price: float = 0.0):
-        super().__init__(owner, item, start_time, end_time, AuctionType.SEALED_BID, starting_price)
+        super().__init__(owner, item, start_time, end_time, starting_price, AuctionType.SEALED_BID)
         self.auction_strategy = SealedBidAuctionStrategy()

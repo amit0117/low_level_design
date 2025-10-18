@@ -5,13 +5,14 @@ from collections import defaultdict
 
 if TYPE_CHECKING:
     from app.models.user import User
+    from app.models.bid import Bid
 
 
 class AuctionRequest:
-
-    def __init__(self, user: "User", password: str):
+    def __init__(self, bid: "Bid", user: "User", request_type: str):
+        self.bid = bid
         self.user = user
-        self.password = password
+        self.request_type = request_type
         self.timestamp = datetime.now()
 
 
@@ -39,18 +40,7 @@ class BaseAuctionHandler(AuctionHandler):
         return handler
 
 
-class AuthenticationHandler(BaseAuctionHandler):
-    def __init__(self):
-        super().__init__()
-
-    def handle(self, request: AuctionRequest) -> bool:
-        if not request.user.is_valid_password(request.password):
-            return False
-        return super().handle(request)
-
-
 class RateLimitHandler(BaseAuctionHandler):
-
     def __init__(self, max_requests_per_minute: int = 10):
         super().__init__()
         self.max_requests_per_minute = max_requests_per_minute
@@ -64,23 +54,32 @@ class RateLimitHandler(BaseAuctionHandler):
         self.user_requests[user_id] = [req_time for req_time in self.user_requests[user_id] if req_time > minute_ago]
 
         if len(self.user_requests[user_id]) >= self.max_requests_per_minute:
-            print(f"Rate limit exceeded for user {request.user.get_name()}. " f"Max {self.max_requests_per_minute} requests per minute.")
+            print(f"Rate limit exceeded for user {request.user.get_name()}. Max {self.max_requests_per_minute} requests per minute.")
             return False
 
         self.user_requests[user_id].append(current_time)
-
         print(f"Rate limit check passed for user {request.user.get_name()}")
 
         return super().handle(request)
 
 
+class ValidationHandler(BaseAuctionHandler):
+    def handle(self, request: AuctionRequest) -> bool:
+        auction = request.bid.get_auction()
+
+        if not auction.can_place_bid(request.bid):
+            print(f"Validation failed for bid by {request.user.get_name()}")
+            return False
+
+        print(f"Validation passed for bid by {request.user.get_name()}")
+        return super().handle(request)
+
+
 class AuctionChainBuilder:
-
     @staticmethod
-    def create_auction_processing_chain() -> AuctionHandler:
-        authentication_handler = AuthenticationHandler()
+    def create_bid_processing_chain() -> AuctionHandler:
         rate_limit_handler = RateLimitHandler(max_requests_per_minute=5)
+        validation_handler = ValidationHandler()
 
-        authentication_handler.set_next(rate_limit_handler)
-
-        return authentication_handler
+        rate_limit_handler.set_next(validation_handler)
+        return rate_limit_handler

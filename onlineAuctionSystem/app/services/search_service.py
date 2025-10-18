@@ -1,5 +1,4 @@
 from app.strategies.search_strategy import AuctionSearchStrategy
-from app.repositories.auction_repository import AuctionRepository
 from typing import Any, Optional
 from app.models.auction import Auction
 

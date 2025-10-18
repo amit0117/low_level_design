@@ -9,14 +9,14 @@ if TYPE_CHECKING:
 
 class AuctionStrategy:
     def __init__(self):
-        self.decorator = AuctionDecoratorFactory.create_bid_place_checker_decorator()
+        self.validator = AuctionDecoratorFactory.create_default_validator()
 
     # Default implementation for each , should be overridden by the concrete strategies
     def determine_winner(self, auction: "Auction") -> "User":
         return next((bid.get_user() for bid in auction.get_bids() if bid.get_amount() == self.get_amount_to_settle_auction(auction)), None)
 
     def can_place_bid(self, auction: "Auction", bid: "Bid") -> bool:
-        return self.decorator.can_place_bid(auction, bid)
+        return self.validator.can_place_bid(auction, bid)
 
     def get_amount_to_settle_auction(self, auction: "Auction") -> float:
         return auction.get_current_price()
