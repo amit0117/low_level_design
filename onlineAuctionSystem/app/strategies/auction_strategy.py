@@ -28,6 +28,8 @@ class EnglishAuctionStrategy(AuctionStrategy):
         return super().can_place_bid(auction, bid) and bid.get_amount() > auction.get_current_price()
 
     def get_amount_to_settle_auction(self, auction: "Auction") -> float:
+        if not auction.get_bids():
+            return auction.get_starting_price()
         # current price is the highest bid amount so we can safely return it
         return max(bid.get_amount() for bid in auction.get_bids())
 
@@ -41,6 +43,8 @@ class DutchAuctionStrategy(AuctionStrategy):
         return super().can_place_bid(auction, bid) and bid.get_amount() < auction.get_current_price()
 
     def get_amount_to_settle_auction(self, auction: "Auction") -> float:
+        if not auction.get_bids():
+            return auction.get_starting_price()
         # Here also winner is the one who has placed the lowest bid
         return min(bid.get_amount() for bid in auction.get_bids())
 
@@ -53,6 +57,9 @@ class SealedBidAuctionStrategy(AuctionStrategy):
         return super().can_place_bid(auction, bid)
 
     def get_amount_to_settle_auction(self, auction: "Auction") -> float:
+        if not auction.get_bids():
+            return auction.get_starting_price()
+
         return max(bid.get_amount() for bid in auction.get_bids())
 
     def determine_winner(self, auction: "Auction") -> "User":

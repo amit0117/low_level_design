@@ -8,8 +8,7 @@ from app.observers.auction_observer import AuctionSubject
 from uuid import uuid4
 from app.state.auction_state import AuctionState, PendingAuctionState
 from app.strategies.auction_strategy import AuctionStrategy, EnglishAuctionStrategy, DutchAuctionStrategy, SealedBidAuctionStrategy
-
-from app.mediator.auction_mediator import AuctionMediator
+from app.mediator.auction_mediator import AuctionComponent
 
 
 if TYPE_CHECKING:
@@ -18,12 +17,18 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
-class Auction(AuctionSubject, AuctionMediator):
+class Auction(AuctionSubject, AuctionComponent):
     def __init__(
-        self, owner: "User", item: "AuctionItem", starting_price: float, start_time: datetime, end_time: datetime, auction_type: AuctionType
+        self,
+        owner: "User",
+        item: "AuctionItem",
+        start_time: datetime,
+        end_time: datetime,
+        starting_price: float = 0.0,
+        auction_type: AuctionType = AuctionType.ENGLISH,
     ):
         AuctionSubject.__init__(self)
-        AuctionMediator.__init__(self)
+        AuctionComponent.__init__(self)
         self.id = str(uuid4())
         self.owner = owner
         self.item = item
@@ -46,11 +51,19 @@ class Auction(AuctionSubject, AuctionMediator):
     def get_item(self) -> "AuctionItem":
         return self.item
 
+    def get_starting_price(self) -> float:
+        return self.starting_price
+
     def get_current_price(self) -> float:
         return self.current_price
 
+    def get_start_time(self) -> datetime:
+        return self.start_time
+
+    def get_end_time(self) -> datetime:
+        return self.end_time
+
     def get_auction_duration(self) -> timedelta:
-        # Returning the duration in seconds
         return (self.end_time - self.start_time).total_seconds()
 
     def get_bids(self) -> list[Bid]:
@@ -58,6 +71,9 @@ class Auction(AuctionSubject, AuctionMediator):
 
     def get_status(self) -> AuctionStatus:
         return self.status
+
+    def get_auction_strategy(self) -> AuctionStrategy:
+        return self.auction_strategy
 
     def start_auction(self) -> None:
         self.state.start_auction(self)
@@ -90,22 +106,59 @@ class Auction(AuctionSubject, AuctionMediator):
     def determine_winner(self) -> "User":
         return self.auction_strategy.determine_winner(self)
 
-    def place_bid(self, bid: "Bid") -> None:
-        if not self.auction_strategy:
-            print(f"Auction strategy is not set for auction {self.get_id()}")
-            return
+    def can_place_bid(self, bid: "Bid") -> bool:
+
+        # Check if auction strategy allows this bid
         if not self.auction_strategy.can_place_bid(self, bid):
-            print(f"Bid {bid.get_id()} cannot be placed on auction {self.get_id()}")
-            return
-        self.current_price = bid.get_amount()
+            print(f"Bid validation failed: strategy rejected bid for auction {self.get_id()}")
+            return False
+
+        return True
+
+    def can_remove_bid(self, bid: "Bid") -> bool:
+        """Check if the bid can be removed based on auction state"""
+        return self.state.can_remove_bid(self, bid)
+
+    def add_bid(self, bid: "Bid") -> None:
+        """Add a bid to the auction"""
         self.bids.append(bid)
 
-        # Notify the mediator about the new bid
-        self.notify_mediator(bid)
-        # Add the bidder as an observer
-        self.add_observer(bid.get_user())
-        # Add this bid to the bidding history of bidder
+    def remove_bid(self, bid: "Bid") -> bool:
+        """Remove a bid from this auction"""
+        # Validate if bid can be removed
+        if not self.can_remove_bid(bid):
+            return False
+
+        self.bids.remove(bid)
+
+        new_price = self.auction_strategy.get_amount_to_settle_auction(self)
+        self.set_current_price(new_price)
+
+        bid.get_user().remove_from_bidding_history(bid)
+
+        self.notify_observers_on_bid(bid, message=f"Bid {bid.get_id()} removed from auction {self.get_id()} by {bid.get_user().get_name()}")
+
+        return True
+
+    def place_bid(self, bid: "Bid") -> bool:
+        if not self.can_place_bid(bid):
+            return False
+
+        # Add the bid
+        self.add_bid(bid)
+        self.set_current_price(bid.get_amount())
+
+        # Add user as observer if not already
+        if not bid.get_user() in self.observers:
+            self.add_observer(bid.get_user())
+
+        # Update user's bidding history
         bid.get_user().add_to_bidding_history(bid)
+
+        # Notify all observers about the new bid
+        self.notify_observers_on_bid(bid)
+
+        return True
 
 
 class EnglishAuction(Auction):

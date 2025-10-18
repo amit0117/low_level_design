@@ -1,5 +1,5 @@
 from app.observers.base_observer import BaseObserver
-from typing import TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.models.auction import Auction
@@ -10,8 +10,10 @@ class AuctionObserver(BaseObserver):
     def update_on_auction_status_change(self, auction: "Auction"):
         print(f"Auction status changed to {auction.get_status().value}\n")
 
-    def update_on_bid(self, bid: "Bid"):
-        print(f"New Bid placed by {bid.get_user().get_name()} for {bid.get_amount()} on {bid.get_auction().get_item().get_name()}\n")
+    def update_on_bid(self, bid: "Bid", message: Optional[str] = None):
+        if not message:
+            message = f"New Bid placed by {bid.get_user().get_name()} for {bid.get_amount()} on {bid.get_auction().get_item().get_name()}\n"
+        print(message)
 
 
 class AuctionSubject:
@@ -28,6 +30,6 @@ class AuctionSubject:
         for observer in self.observers:
             observer.update_on_auction_status_change(auction)
 
-    def notify_observers_on_bid(self, bid: "Bid"):
+    def notify_observers_on_bid(self, bid: "Bid", message: Optional[str] = None):
         for observer in self.observers:
-            observer.update_on_bid(bid)
+            observer.update_on_bid(bid, message)

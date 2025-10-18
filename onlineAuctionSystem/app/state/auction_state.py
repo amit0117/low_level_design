@@ -20,6 +20,10 @@ class AuctionState(ABC):
     def cancel_auction(self, auction: "Auction") -> None:
         raise NotImplementedError("cancel_auction method has not been implemented")
 
+    @abstractmethod
+    def can_remove_bid(self, auction: "Auction", bid: "Bid") -> bool:
+        raise NotImplementedError("remove_bid method has not been implemented")
+
 
 class PendingAuctionState(AuctionState):
     def start_auction(self, auction: "Auction") -> None:
@@ -34,6 +38,10 @@ class PendingAuctionState(AuctionState):
         print("Cancelling a pending auction...\n")
         auction.set_status(AuctionStatus.CANCELLED)
         auction.set_state(CancelledAuctionState())
+
+    def can_remove_bid(self, auction: "Auction", bid: "Bid") -> bool:
+        print("Cannot remove a bid from a pending auction...\n")
+        return False
 
 
 class ActiveAuctionState(AuctionState):
@@ -50,6 +58,10 @@ class ActiveAuctionState(AuctionState):
         auction.set_status(AuctionStatus.CANCELLED)
         auction.set_state(CancelledAuctionState())
 
+    def can_remove_bid(self, auction: "Auction", bid: "Bid") -> bool:
+        print("Can remove a bid from an active auction...\n")
+        return True
+
 
 class ClosedAuctionState(AuctionState):
     def start_auction(self, auction: "Auction") -> None:
@@ -63,6 +75,10 @@ class ClosedAuctionState(AuctionState):
     def cancel_auction(self, auction: "Auction") -> None:
         print("Cannot cancel a closed auction...\n")
 
+    def can_remove_bid(self, auction: "Auction", bid: "Bid") -> bool:
+        print("Cannot remove a bid from a closed auction...\n")
+        return False
+
 
 class CancelledAuctionState(AuctionState):
     def start_auction(self, auction: "Auction") -> None:
@@ -73,3 +89,7 @@ class CancelledAuctionState(AuctionState):
 
     def cancel_auction(self, auction: "Auction") -> None:
         print("Auction is already cancelled...\n")
+
+    def can_remove_bid(self, auction: "Auction", bid: "Bid") -> bool:
+        print("Cannot remove a bid from a cancelled auction...\n")
+        return False

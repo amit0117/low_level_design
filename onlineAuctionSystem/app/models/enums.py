@@ -33,3 +33,11 @@ class PaymentMethod(Enum):
     CREDIT_CARD = "credit_card"
     DEBIT_CARD = "debit_card"
     CASH = "cash"
+
+
+class ActionType(Enum):
+    PLACE_BID = "place_bid"
+    REMOVE_BID = "remove_bid"
+    START_AUCTION = "start_auction"
+    END_AUCTION = "end_auction"
+    CANCEL_AUCTION = "cancel_auction"
