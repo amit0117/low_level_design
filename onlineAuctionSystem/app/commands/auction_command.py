@@ -1,9 +1,7 @@
 from app.commands.base_command import BaseCommand
-from app.models.enums import ActionType
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.models.auction import Auction
     from app.models.bid import Bid
 
 

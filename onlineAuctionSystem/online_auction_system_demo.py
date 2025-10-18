@@ -1,20 +1,3 @@
-"""
-Online Auction System Demo
-
-Comprehensive demonstration of the online auction system showcasing:
-- User registration and management
-- Auction creation and management
-- Bidding workflow with design patterns
-- Chain of Responsibility for validation
-- Mediator pattern for coordination
-- Command pattern for operations
-- State pattern for auction lifecycle
-- Strategy pattern for different auction types
-- Observer pattern for notifications
-
-Author: Amit Kumar
-"""
-
 from datetime import datetime, timedelta
 import time
 import threading
@@ -23,14 +6,24 @@ from app.models.user import User
 from app.models.auction_item import AuctionItem
 from app.models.auction import EnglishAuction, DutchAuction, SealedBidAuction
 from app.models.bid import Bid
-from app.models.enums import AuctionItemType, AuctionStatus
+from app.models.enums import AuctionItemType, AuctionStatus, PaymentMethod
 from app.mediator.auction_mediator import ConcreteAuctionMediator
 from app.commands.auction_command import PlaceBidCommand
+from app.services.payment_service import PaymentService
+from app.strategies.payment_strategies import CreditCardPaymentStrategy, DebitCardPaymentStrategy, CashPaymentStrategy
+from app.services.search_service import SearchService
+from app.strategies.search_strategy import (
+    AuctionItemTitleSearchStrategy,
+    AuctionItemStartingPriceSearchStrategy,
+    AuctionItemStartingPriceRangeSearchStrategy,
+    AuctionStatusSearchStrategy,
+)
+from app.repositories.auction_repository import AuctionRepository
 
 
 def concurrent_bidding_test(mediator: ConcreteAuctionMediator, auction, num_users: int = 5):
     """Test concurrent bidding using ThreadPoolExecutor"""
-    print(f"🚀 Testing {num_users} concurrent bidders on auction {auction.get_id()[:8]}...")
+    print(f"🚀 Testing {num_users} concurrent bidders...")
 
     # Create users for concurrent bidding
     concurrent_users = []
@@ -48,7 +41,6 @@ def concurrent_bidding_test(mediator: ConcreteAuctionMediator, auction, num_user
         try:
             bid = Bid(user, auction, bid_amount)
             command = PlaceBidCommand(bid)
-
             success = command.execute()
 
             if success:
@@ -64,17 +56,12 @@ def concurrent_bidding_test(mediator: ConcreteAuctionMediator, auction, num_user
         except Exception as e:
             return {"success": False, "user": user.get_name(), "amount": bid_amount, "reason": str(e), "thread_id": thread_id}
 
-    # Execute concurrent bids using ThreadPoolExecutor
-    start_time = time.time()
-
-    # Create bids with different amounts
-    bid_amounts = [1200.0, 1500.0, 1800.0, 2000.0, 2200.0]
-
+    # Execute concurrent bids
     with ThreadPoolExecutor(max_workers=num_users) as executor:
-        # Submit all bidding tasks
-        future_to_user = {executor.submit(attempt_bid, user, bid_amounts[i]): user for i, user in enumerate(concurrent_users)}
+        # Submit all bid attempts
+        future_to_user = {executor.submit(attempt_bid, user, 1000.0 + (i * 100)): user for i, user in enumerate(concurrent_users)}
 
-        # Collect results as they complete
+        # Collect results
         for future in as_completed(future_to_user):
             result = future.result()
             results["bid_details"].append(result)
@@ -84,32 +71,20 @@ def concurrent_bidding_test(mediator: ConcreteAuctionMediator, auction, num_user
             else:
                 results["failed_bids"] += 1
 
-    end_time = time.time()
-    execution_time = end_time - start_time
-
-    # Print results summary
-    print(f"📊 Results: {results['successful_bids']}/{num_users} successful bids ({execution_time:.2f}s)")
-
-    return results
+    # Print results
+    print(f"   ✅ Successful bids: {results['successful_bids']}")
+    print(f"   ❌ Failed bids: {results['failed_bids']}")
+    print(f"   💰 Final price: ₹{auction.get_current_price()}")
+    print(f"   👑 Winner: {auction.determine_winner().get_name() if auction.determine_winner() else 'None'}")
 
 
 def main():
-    print("=== ONLINE AUCTION SYSTEM DEMO ===\n")
+    print("🏛️ ONLINE AUCTION SYSTEM DEMO")
+    print("=" * 50)
 
-    # ==================== MEDIATOR SETUP ====================
-    print("1. INITIALIZING SYSTEM")
-    print("-" * 30)
-
-    # Create the central mediator
+    # Initialize system
     mediator = ConcreteAuctionMediator()
-    print("✅ Mediator initialized with Chain of Responsibility")
-    print("   - RateLimitHandler: 5 requests/minute per user")
-    print("   - ValidationHandler: Bid validation")
-    print()
-
-    # ==================== USER REGISTRATION ====================
-    print("2. USER REGISTRATION")
-    print("-" * 25)
+    print("✅ System initialized")
 
     # Create users
     arjun = User("Arjun Sharma", "arjun.sharma@email.com", "password123")
@@ -118,322 +93,181 @@ def main():
     sneha = User("Sneha Gupta", "sneha.gupta@email.com", "password123")
     vikram = User("Vikram Kumar", "vikram.kumar@email.com", "password123")
 
-    # Register users with mediator
     users = [arjun, priya, rahul, sneha, vikram]
     for user in users:
         mediator.register_component(user)
 
-    print(f"✅ Registered {len(users)} users:")
-    for user in users:
-        print(f"   - {user.get_name()} ({user.get_email()})")
-    print()
-
-    # ==================== AUCTION CREATION ====================
-    print("3. AUCTION CREATION")
-    print("-" * 25)
+    print(f"✅ Registered {len(users)} users")
 
     # Create auction items
-    guitar_item = AuctionItem(
-        name="Vintage Gibson Guitar",
-        description="Beautiful vintage acoustic guitar from 1970s",
-        starting_price=1000.0,
-        item_type=AuctionItemType.PHYSICAL,
-    )
+    guitar_item = AuctionItem("Vintage Guitar", "Beautiful vintage guitar from 1960s", 1000.0, AuctionItemType.PHYSICAL)
+    painting_item = AuctionItem("Abstract Painting", "Modern abstract art piece", 2000.0, AuctionItemType.PHYSICAL)
+    software_item = AuctionItem("Software License", "Premium software license for 1 year", 500.0, AuctionItemType.DIGITAL)
 
-    painting_item = AuctionItem(
-        name="Modern Art Painting",
-        description="Contemporary abstract painting by local artist",
-        starting_price=2000.0,
-        item_type=AuctionItemType.PHYSICAL,
-    )
-
-    software_item = AuctionItem(
-        name="Premium Software License",
-        description="Lifetime license for professional design software",
-        starting_price=500.0,
-        item_type=AuctionItemType.DIGITAL,
-    )
-
-    # Create different types of auctions
+    # Create auctions
     start_time = datetime.now()
     end_time = start_time + timedelta(minutes=10)
 
-    # English Auction (ascending bids)
     guitar_auction = EnglishAuction(owner=arjun, item=guitar_item, start_time=start_time, end_time=end_time, starting_price=1000.0)
-
-    # Dutch Auction (descending bids)
     painting_auction = DutchAuction(
         owner=priya, item=painting_item, start_time=start_time + timedelta(minutes=2), end_time=end_time + timedelta(minutes=2), starting_price=2000.0
     )
-
-    # Sealed Bid Auction
     software_auction = SealedBidAuction(
         owner=rahul, item=software_item, start_time=start_time + timedelta(minutes=4), end_time=end_time + timedelta(minutes=4), starting_price=500.0
     )
 
-    # Register auctions with mediator
     auctions = [guitar_auction, painting_auction, software_auction]
     for auction in auctions:
         mediator.register_component(auction)
 
-    print(f"✅ Created {len(auctions)} auctions:")
-    print(f"   - {guitar_item.get_name()} (English Auction) - Starting: ₹{guitar_auction.get_starting_price()}")
-    print(f"   - {painting_item.get_name()} (Dutch Auction) - Starting: ₹{painting_auction.get_starting_price()}")
-    print(f"   - {software_item.get_name()} (Sealed Bid Auction) - Starting: ₹{software_auction.get_starting_price()}")
-    print()
+    # Add to repository for search
+    auction_repository = AuctionRepository()
+    for auction in auctions:
+        auction_repository.add_auction(auction)
 
-    # ==================== AUCTION STATE MANAGEMENT ====================
-    print("4. AUCTION STATE MANAGEMENT")
-    print("-" * 35)
+    print(f"✅ Created {len(auctions)} auctions")
 
-    # Start auctions using direct method calls
-    print("🚀 Starting auctions:")
+    # Start auctions
     guitar_auction.start_auction()
-    print(f"   - Guitar auction status: {guitar_auction.get_status().value}")
-
     painting_auction.start_auction()
-    print(f"   - Painting auction status: {painting_auction.get_status().value}")
-
     software_auction.start_auction()
-    print(f"   - Software auction status: {software_auction.get_status().value}")
-    print()
+    print("✅ All auctions started")
 
-    # ==================== BIDDING WORKFLOW ====================
-    print("5. BIDDING WORKFLOW")
-    print("-" * 25)
+    # Bidding workflow
+    print("\n📈 BIDDING WORKFLOW")
+    print("-" * 20)
 
-    # English Auction Bidding (ascending)
-    print("📈 English Auction Bidding (Ascending):")
-    guitar_bids = [(priya, 1200.0), (rahul, 1500.0), (sneha, 1800.0), (vikram, 2000.0), (priya, 2200.0)]  # Priya outbids herself
+    # English Auction Bidding
+    print("English Auction Bidding:")
+    guitar_bids = [(priya, 1200.0), (rahul, 1500.0), (sneha, 1800.0), (vikram, 2000.0), (priya, 2200.0)]
 
     for user, amount in guitar_bids:
         bid = Bid(user, guitar_auction, amount)
         command = PlaceBidCommand(bid)
-
-        print(f"   {user.get_name()} bidding ₹{amount}...")
         success = command.execute()
-
         if success:
-            print(f"   ✅ Bid accepted! Current price: ₹{guitar_auction.get_current_price()}")
-        else:
-            print(f"   ❌ Bid rejected!")
-        print()
+            print(f"   ✅ {user.get_name()} bid ₹{amount}")
 
-    # Dutch Auction Bidding (descending)
-    print("📉 Dutch Auction Bidding (Descending):")
-    painting_bids = [(rahul, 1800.0), (sneha, 1500.0), (vikram, 1200.0)]
+    print(f"   Final price: ₹{guitar_auction.get_current_price()}")
+    print(f"   Winner: {guitar_auction.determine_winner().get_name() if guitar_auction.determine_winner() else 'None'}")
 
-    for user, amount in painting_bids:
+    # Dutch Auction Bidding
+    print("\nDutch Auction Bidding:")
+    dutch_bids = [(rahul, 2000.0), (sneha, 1800.0), (vikram, 1500.0), (arjun, 1200.0)]
+
+    for user, amount in dutch_bids:
         bid = Bid(user, painting_auction, amount)
         command = PlaceBidCommand(bid)
-
-        print(f"   {user.get_name()} bidding ₹{amount}...")
         success = command.execute()
-
         if success:
-            print(f"   ✅ Bid accepted! Current price: ₹{painting_auction.get_current_price()}")
-        else:
-            print(f"   ❌ Bid rejected!")
-        print()
+            print(f"   ✅ {user.get_name()} bid ₹{amount}")
+
+    print(f"   Final price: ₹{painting_auction.get_current_price()}")
+    print(f"   Winner: {painting_auction.determine_winner().get_name() if painting_auction.determine_winner() else 'None'}")
 
     # Sealed Bid Auction
-    print("🔒 Sealed Bid Auction:")
-    sealed_bids = [(arjun, 600.0), (priya, 750.0), (sneha, 800.0), (vikram, 900.0)]
+    print("\nSealed Bid Auction:")
+    sealed_bids = [(sneha, 600.0), (vikram, 700.0), (priya, 550.0)]
 
     for user, amount in sealed_bids:
         bid = Bid(user, software_auction, amount)
         command = PlaceBidCommand(bid)
-
-        print(f"   {user.get_name()} placing sealed bid ₹{amount}...")
         success = command.execute()
-
         if success:
-            print(f"   ✅ Sealed bid placed!")
-        else:
-            print(f"   ❌ Bid rejected!")
-        print()
+            print(f"   ✅ {user.get_name()} bid ₹{amount}")
 
-    # ==================== RATE LIMITING DEMO ====================
-    print("6. RATE LIMITING DEMO")
-    print("-" * 25)
+    print(f"   Final price: ₹{software_auction.get_current_price()}")
+    print(f"   Winner: {software_auction.determine_winner().get_name() if software_auction.determine_winner() else 'None'}")
 
-    print("🚫 Testing rate limiting (5 requests/minute per user):")
-
-    # Try to exceed rate limit
-    for i in range(7):  # Exceed the 5 request limit
-        bid = Bid(arjun, guitar_auction, 2500.0 + i * 100)
-        command = PlaceBidCommand(bid)
-
-        print(f"   Attempt {i+1}: Arjun bidding ₹{2500.0 + i * 100}...")
-        success = command.execute()
-
-        if not success:
-            print(f"   ❌ Rate limit exceeded after {i+1} attempts!")
-            break
-        else:
-            print(f"   ✅ Bid {i+1} accepted")
-    print()
-
-    # ==================== BID REMOVAL DEMO ====================
-    print("7. BID REMOVAL DEMO")
-    print("-" * 25)
-
-    print("🗑️ Testing bid removal and price updates:")
-
-    # Show current state before removal
-    print(f"   Current bids: {len(guitar_auction.get_bids())}")
-    print(f"   Current price: ₹{guitar_auction.get_current_price()}")
-
-    # Get the latest bid from guitar auction
+    # Bid removal test
+    print("\n🗑️ BID REMOVAL TEST")
+    print("-" * 20)
     guitar_bids_list = guitar_auction.get_bids()
     if guitar_bids_list:
         latest_bid = guitar_bids_list[-1]
-        print(f"   Removing {latest_bid.get_user().get_name()}'s bid of ₹{latest_bid.get_amount()}")
-
+        print(f"Removing bid: ₹{latest_bid.get_amount()} by {latest_bid.get_user().get_name()}")
         success = guitar_auction.remove_bid(latest_bid)
-
         if success:
-            print(f"   ✅ Bid removed! New current price: ₹{guitar_auction.get_current_price()}")
-            print(f"   Remaining bids: {len(guitar_auction.get_bids())}")
-        else:
-            print(f"   ❌ Bid removal failed!")
-    print()
+            print(f"   ✅ Bid removed! New price: ₹{guitar_auction.get_current_price()}")
 
-    # ==================== DUTCH AUCTION TEST ====================
-    print("8. DUTCH AUCTION TEST")
-    print("-" * 25)
-
-    print("📉 Testing Dutch Auction (Descending Price):")
-    print(f"   Starting price: ₹{painting_auction.get_starting_price()}")
-    print(f"   Current price: ₹{painting_auction.get_current_price()}")
-
-    # Test Dutch auction with descending bids
-    dutch_bids = [
-        (rahul, 1900.0),  # Below starting price
-        (sneha, 1500.0),  # Further below
-        (vikram, 1200.0),  # Even lower
-        (arjun, 1000.0),  # Lowest bid
-    ]
-
-    print("   Placing descending bids on Dutch auction:")
-    for user, amount in dutch_bids:
-        bid = Bid(user, painting_auction, amount)
-        command = PlaceBidCommand(bid)
-
-        print(f"   {user.get_name()} bidding ₹{amount}...")
-        success = command.execute()
-
-        if success:
-            print(f"   ✅ Bid accepted! Current price: ₹{painting_auction.get_current_price()}")
-        else:
-            print(f"   ❌ Bid rejected!")
-        print()
-
-    # Show final Dutch auction state
-    print(f"   Dutch auction final state:")
-    print(f"   - Total bids: {len(painting_auction.get_bids())}")
-    print(f"   - Current price: ₹{painting_auction.get_current_price()}")
-    print(f"   - Winner: {painting_auction.determine_winner().get_name() if painting_auction.determine_winner() else 'None'}")
-    print()
-
-    # ==================== CONCURRENT BIDDING TEST ====================
-    print("9. CONCURRENT BIDDING TEST")
-    print("-" * 35)
-
-    # Test concurrent bidding on guitar auction
-    concurrent_bidding_test(mediator, guitar_auction, num_users=5)
-    print()
-
-    # ==================== AUCTION ENDING ====================
-    print("10. AUCTION ENDING")
+    # Search functionality
+    print("\n🔍 SEARCH FUNCTIONALITY")
     print("-" * 20)
 
-    print("🏁 Ending auctions:")
+    search_service = SearchService()
 
-    # End auctions
-    guitar_auction.end_auction()
-    guitar_winner = guitar_auction.determine_winner()
-    print(f"   - Guitar auction ended. Winner: {guitar_winner.get_name() if guitar_winner else 'None'}")
-    print(f"     Final price: ₹{guitar_auction.get_current_price()}")
-    print(f"     Status: {guitar_auction.get_status().value}")
+    # Search by title
+    print("Search by title 'guitar':")
+    title_search_strategy = AuctionItemTitleSearchStrategy()
+    search_service.set_search_strategy(title_search_strategy)
+    results = search_service.search("guitar")
+    print(f"   Found {len(results)} auction(s)")
 
-    painting_auction.end_auction()
-    painting_winner = painting_auction.determine_winner()
-    print(f"   - Painting auction ended. Winner: {painting_winner.get_name() if painting_winner else 'None'}")
-    print(f"     Final price: ₹{painting_auction.get_current_price()}")
-    print(f"     Status: {painting_auction.get_status().value}")
+    # Search by price range
+    print("Search by price range ₹500-₹1500:")
+    price_range_strategy = AuctionItemStartingPriceRangeSearchStrategy()
+    search_service.set_search_strategy(price_range_strategy)
+    results = search_service.search((500, 1500))
+    print(f"   Found {len(results)} auction(s)")
 
-    software_auction.end_auction()
-    software_winner = software_auction.determine_winner()
-    print(f"   - Software auction ended. Winner: {software_winner.get_name() if software_winner else 'None'}")
-    print(f"     Final price: ₹{software_auction.get_current_price()}")
-    print(f"     Status: {software_auction.get_status().value}")
-    print()
+    # Payment processing
+    print("\n💳 PAYMENT PROCESSING")
+    print("-" * 20)
 
-    # ==================== AUCTION STATISTICS ====================
-    print("11. AUCTION STATISTICS")
-    print("-" * 30)
+    payment_amounts = [500.0, 1200.0, 2500.0]
 
-    print("📊 System Overview:")
-    print(f"   Total Users: {len(users)}")
-    print(f"   Total Auctions: {len(auctions)}")
-    print(f"   Active Auctions: {len([a for a in auctions if a.get_status() == AuctionStatus.ACTIVE])}")
-    print(f"   Closed Auctions: {len([a for a in auctions if a.get_status() == AuctionStatus.CLOSED])}")
+    # Credit Card Payment
+    print("Credit Card Payment:")
+    credit_card_strategy = CreditCardPaymentStrategy("1234-5678-9012-3456", "12/25", "123")
+    credit_payment_service = PaymentService(credit_card_strategy)
 
-    total_bids = sum(len(auction.get_bids()) for auction in auctions)
-    print(f"   Total Bids Placed: {total_bids}")
+    for amount in payment_amounts:
+        response = credit_payment_service.process_payment(amount)
+        print(f"   Amount: ₹{amount} | Status: {response.get_status().value}")
 
-    total_revenue = sum(auction.get_current_price() for auction in auctions)
-    print(f"   Total Revenue: ₹{total_revenue:.2f}")
-    print()
+    # Debit Card Payment
+    print("\nDebit Card Payment:")
+    debit_card_strategy = DebitCardPaymentStrategy("9876-5432-1098-7654", "06/26", "456")
+    debit_payment_service = PaymentService(debit_card_strategy)
 
-    # ==================== USER BIDDING HISTORY ====================
-    print("12. USER BIDDING HISTORY")
-    print("-" * 30)
+    for amount in payment_amounts:
+        response = debit_payment_service.process_payment(amount)
+        print(f"   Amount: ₹{amount} | Status: {response.get_status().value}")
 
-    for user in users:
-        history = user.get_bidding_history()
-        if history:
-            print(f"   {user.get_name()}: {len(history)} bids")
-            for bid in history:
-                print(f"     - ₹{bid.get_amount()} on {bid.get_auction().get_item().get_name()}")
-        else:
-            print(f"   {user.get_name()}: No bids placed")
-    print()
+    # Cash Payment
+    print("\nCash Payment:")
+    cash_strategy = CashPaymentStrategy()
+    cash_payment_service = PaymentService(cash_strategy)
 
-    # ==================== DESIGN PATTERNS SUMMARY ====================
-    print("13. DESIGN PATTERNS DEMONSTRATED")
-    print("-" * 40)
+    for amount in payment_amounts:
+        response = cash_payment_service.process_payment(amount)
+        print(f"   Amount: ₹{amount} | Status: {response.get_status().value}")
 
-    print("🎯 Design Patterns Used:")
-    print("   ✅ Mediator Pattern: Centralized coordination between components")
-    print("   ✅ Chain of Responsibility: Rate limiting and validation")
-    print("   ✅ Command Pattern: Encapsulated operations with undo capability")
-    print("   ✅ State Pattern: Auction lifecycle management")
-    print("   ✅ Strategy Pattern: Different auction types (English, Dutch, Sealed)")
-    print("   ✅ Observer Pattern: Notification system for auction updates")
-    print("   ✅ Component Pattern: Reusable base for all mediator participants")
-    print()
-
-    # ==================== SYSTEM FEATURES ====================
-    print("14. SYSTEM FEATURES")
+    # Concurrent bidding test
+    print("\n🚀 CONCURRENT BIDDING TEST")
     print("-" * 25)
+    concurrent_bidding_test(mediator, guitar_auction, num_users=5)
 
-    print("🚀 Key Features Demonstrated:")
-    print("   ✅ User Registration and Management")
-    print("   ✅ Multiple Auction Types (English, Dutch, Sealed Bid)")
-    print("   ✅ Real-time Bidding with Validation")
-    print("   ✅ Rate Limiting (5 requests/minute per user)")
-    print("   ✅ Concurrent Access Handling")
-    print("   ✅ Bid Placement and Removal")
-    print("   ✅ Automatic Winner Determination")
-    print("   ✅ Auction State Management")
-    print("   ✅ Extensible Architecture")
-    print()
+    # End auctions and determine winners
+    print("\n🏁 AUCTION RESULTS")
+    print("-" * 20)
 
-    print("=== DEMO COMPLETED ===")
-    print("\n💡 Note: In production, auctions would be ended automatically")
-    print("   by cron jobs based on their end_time, not manually.")
+    guitar_auction.end_auction()
+    painting_auction.end_auction()
+    software_auction.end_auction()
+
+    print(
+        f"Guitar Auction - Winner: {guitar_auction.determine_winner().get_name() if guitar_auction.determine_winner() else 'None'} | Price: ₹{guitar_auction.get_current_price()}"
+    )
+    print(
+        f"Painting Auction - Winner: {painting_auction.determine_winner().get_name() if painting_auction.determine_winner() else 'None'} | Price: ₹{painting_auction.get_current_price()}"
+    )
+    print(
+        f"Software Auction - Winner: {software_auction.determine_winner().get_name() if software_auction.determine_winner() else 'None'} | Price: ₹{software_auction.get_current_price()}"
+    )
+
+    print("\n✅ DEMO COMPLETED")
+    print("All requirements demonstrated successfully!")
 
 
 if __name__ == "__main__":

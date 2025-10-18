@@ -45,7 +45,6 @@ class DutchAuctionStrategy(AuctionStrategy):
     def get_amount_to_settle_auction(self, auction: "Auction") -> float:
         if not auction.get_bids():
             return auction.get_starting_price()
-        # Here also winner is the one who has placed the lowest bid
         return min(bid.get_amount() for bid in auction.get_bids())
 
     def determine_winner(self, auction: "Auction") -> "User":
