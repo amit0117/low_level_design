@@ -1,35 +1,28 @@
 from datetime import datetime, timedelta
-import time
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from app.models.user import User
 from app.models.auction_item import AuctionItem
-from app.models.auction import EnglishAuction, DutchAuction, SealedBidAuction
 from app.models.bid import Bid
-from app.models.enums import AuctionItemType, AuctionStatus, PaymentMethod
-from app.mediator.auction_mediator import ConcreteAuctionMediator
-from app.commands.auction_command import PlaceBidCommand
+from app.models.enums import AuctionItemType, AuctionType
 from app.services.payment_service import PaymentService
 from app.strategies.payment_strategies import CreditCardPaymentStrategy, DebitCardPaymentStrategy, CashPaymentStrategy
 from app.services.search_service import SearchService
 from app.strategies.search_strategy import (
     AuctionItemTitleSearchStrategy,
-    AuctionItemStartingPriceSearchStrategy,
     AuctionItemStartingPriceRangeSearchStrategy,
-    AuctionStatusSearchStrategy,
 )
-from app.repositories.auction_repository import AuctionRepository
+from online_auction_system import OnlineAuctionSystem
 
 
-def concurrent_bidding_test(mediator: ConcreteAuctionMediator, auction, num_users: int = 5):
+def concurrent_bidding_test(auction_system: OnlineAuctionSystem, auction, num_users: int = 5):
     """Test concurrent bidding using ThreadPoolExecutor"""
     print(f"🚀 Testing {num_users} concurrent bidders...")
 
     # Create users for concurrent bidding
     concurrent_users = []
     for i in range(num_users):
-        user = User(f"Concurrent Bidder {i+1}", f"bidder{i+1}@concurrent.com", "password123")
-        mediator.register_component(user)
+        user = auction_system.register_user(f"Concurrent Bidder {i+1}", f"bidder{i+1}@concurrent.com", "password123")
         concurrent_users.append(user)
 
     # Results tracking
@@ -40,8 +33,7 @@ def concurrent_bidding_test(mediator: ConcreteAuctionMediator, auction, num_user
         thread_id = threading.current_thread().ident
         try:
             bid = Bid(user, auction, bid_amount)
-            command = PlaceBidCommand(bid)
-            success = command.execute()
+            success = auction_system.place_bid(bid)
 
             if success:
                 return {
@@ -83,20 +75,17 @@ def main():
     print("=" * 50)
 
     # Initialize system
-    mediator = ConcreteAuctionMediator()
+    auction_system = OnlineAuctionSystem()
     print("✅ System initialized")
 
-    # Create users
-    arjun = User("Arjun Sharma", "arjun.sharma@email.com", "password123")
-    priya = User("Priya Patel", "priya.patel@email.com", "password123")
-    rahul = User("Rahul Singh", "rahul.singh@email.com", "password123")
-    sneha = User("Sneha Gupta", "sneha.gupta@email.com", "password123")
-    vikram = User("Vikram Kumar", "vikram.kumar@email.com", "password123")
+    # Register users
+    arjun = auction_system.register_user("Arjun Sharma", "arjun.sharma@email.com", "password123")
+    priya = auction_system.register_user("Priya Patel", "priya.patel@email.com", "password123")
+    rahul = auction_system.register_user("Rahul Singh", "rahul.singh@email.com", "password123")
+    sneha = auction_system.register_user("Sneha Gupta", "sneha.gupta@email.com", "password123")
+    vikram = auction_system.register_user("Vikram Kumar", "vikram.kumar@email.com", "password123")
 
     users = [arjun, priya, rahul, sneha, vikram]
-    for user in users:
-        mediator.register_component(user)
-
     print(f"✅ Registered {len(users)} users")
 
     # Create auction items
@@ -108,29 +97,21 @@ def main():
     start_time = datetime.now()
     end_time = start_time + timedelta(minutes=10)
 
-    guitar_auction = EnglishAuction(owner=arjun, item=guitar_item, start_time=start_time, end_time=end_time, starting_price=1000.0)
-    painting_auction = DutchAuction(
-        owner=priya, item=painting_item, start_time=start_time + timedelta(minutes=2), end_time=end_time + timedelta(minutes=2), starting_price=2000.0
+    guitar_auction = auction_system.create_auction(arjun, guitar_item, start_time, end_time, 1000.0, AuctionType.ENGLISH)
+    painting_auction = auction_system.create_auction(
+        priya, painting_item, start_time + timedelta(minutes=2), end_time + timedelta(minutes=2), 2000.0, AuctionType.DUTCH
     )
-    software_auction = SealedBidAuction(
-        owner=rahul, item=software_item, start_time=start_time + timedelta(minutes=4), end_time=end_time + timedelta(minutes=4), starting_price=500.0
+    software_auction = auction_system.create_auction(
+        rahul, software_item, start_time + timedelta(minutes=4), end_time + timedelta(minutes=4), 500.0, AuctionType.SEALED_BID
     )
 
     auctions = [guitar_auction, painting_auction, software_auction]
-    for auction in auctions:
-        mediator.register_component(auction)
-
-    # Add to repository for search
-    auction_repository = AuctionRepository()
-    for auction in auctions:
-        auction_repository.add_auction(auction)
-
     print(f"✅ Created {len(auctions)} auctions")
 
     # Start auctions
-    guitar_auction.start_auction()
-    painting_auction.start_auction()
-    software_auction.start_auction()
+    auction_system.start_auction(guitar_auction)
+    auction_system.start_auction(painting_auction)
+    auction_system.start_auction(software_auction)
     print("✅ All auctions started")
 
     # Bidding workflow
@@ -143,8 +124,7 @@ def main():
 
     for user, amount in guitar_bids:
         bid = Bid(user, guitar_auction, amount)
-        command = PlaceBidCommand(bid)
-        success = command.execute()
+        success = auction_system.place_bid(bid)
         if success:
             print(f"   ✅ {user.get_name()} bid ₹{amount}")
 
@@ -157,8 +137,7 @@ def main():
 
     for user, amount in dutch_bids:
         bid = Bid(user, painting_auction, amount)
-        command = PlaceBidCommand(bid)
-        success = command.execute()
+        success = auction_system.place_bid(bid)
         if success:
             print(f"   ✅ {user.get_name()} bid ₹{amount}")
 
@@ -171,8 +150,7 @@ def main():
 
     for user, amount in sealed_bids:
         bid = Bid(user, software_auction, amount)
-        command = PlaceBidCommand(bid)
-        success = command.execute()
+        success = auction_system.place_bid(bid)
         if success:
             print(f"   ✅ {user.get_name()} bid ₹{amount}")
 
@@ -186,7 +164,7 @@ def main():
     if guitar_bids_list:
         latest_bid = guitar_bids_list[-1]
         print(f"Removing bid: ₹{latest_bid.get_amount()} by {latest_bid.get_user().get_name()}")
-        success = guitar_auction.remove_bid(latest_bid)
+        success = auction_system.remove_bid(latest_bid)
         if success:
             print(f"   ✅ Bid removed! New price: ₹{guitar_auction.get_current_price()}")
 
@@ -246,15 +224,15 @@ def main():
     # Concurrent bidding test
     print("\n🚀 CONCURRENT BIDDING TEST")
     print("-" * 25)
-    concurrent_bidding_test(mediator, guitar_auction, num_users=5)
+    concurrent_bidding_test(auction_system, guitar_auction, num_users=5)
 
     # End auctions and determine winners
     print("\n🏁 AUCTION RESULTS")
     print("-" * 20)
 
-    guitar_auction.end_auction()
-    painting_auction.end_auction()
-    software_auction.end_auction()
+    auction_system.end_auction(guitar_auction)
+    auction_system.end_auction(painting_auction)
+    auction_system.end_auction(software_auction)
 
     print(
         f"Guitar Auction - Winner: {guitar_auction.determine_winner().get_name() if guitar_auction.determine_winner() else 'None'} | Price: ₹{guitar_auction.get_current_price()}"
