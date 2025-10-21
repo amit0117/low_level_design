@@ -1,10 +1,10 @@
 # Elevator Control System
 
-A comprehensive Low-Level Design (LLD) implementation of an elevator control system using Python, demonstrating advanced object-oriented design principles and design patterns.
+A comprehensive Low-Level Design (LLD) implementation of an elevator control system using Python, demonstrating advanced object-oriented design principles, design patterns, and concurrent programming techniques.
 
 ## 🏗️ System Architecture
 
-This elevator system implements a robust, scalable architecture using multiple design patterns:
+This elevator system implements a robust, scalable architecture using multiple design patterns and threading concepts:
 
 ### Core Design Patterns Used
 
@@ -13,6 +13,7 @@ This elevator system implements a robust, scalable architecture using multiple d
 3. **Observer Pattern** - Notifies display panels about elevator status changes
 4. **Singleton Pattern** - Ensures single instance of elevator service
 5. **Repository Pattern** - Manages elevator and floor data access
+6. **Producer-Consumer Pattern** - Thread-safe request processing using Condition variables
 
 ### Key Components
 
@@ -72,18 +73,20 @@ app/
 
 ### Running the System
 
-1. **Basic Demo** (shows all elevator states):
+1. **Main Demo** (comprehensive demonstration):
 
 ```bash
 cd low_level_design/elevatorSystem
 python3 elevator_service_demo.py
 ```
 
-2. **Better Demo** (designed to showcase all states clearly):
+This demo showcases:
 
-```bash
-python3 better_demo.py
-```
+- All elevator states (Idle, MovingUp, MovingDown)
+- Multiple scheduling strategies (SCAN, FCFS, SSTF)
+- External and internal requests
+- Real-time state transitions
+- Graceful system shutdown
 
 ## 📊 System Behavior
 
@@ -105,11 +108,19 @@ Idle State
 
 1. **External Request**: User presses floor button
 2. **Elevator Selection**: Scheduling strategy selects best elevator
-3. **Request Addition**: Request added to elevator's queue
-4. **State Transition**: Elevator transitions to appropriate state
-5. **Movement**: Elevator moves floor by floor
-6. **Request Completion**: Request removed when floor reached
-7. **State Check**: Elevator checks for remaining requests
+3. **Request Addition**: Request added to elevator's unified request storage (up_requests/down_requests)
+4. **Thread Notification**: Condition variable notifies waiting elevator thread
+5. **State Transition**: Elevator transitions to appropriate state
+6. **Movement**: Elevator moves floor by floor with realistic timing
+7. **Request Completion**: Request removed when floor reached (handled by state pattern)
+8. **State Check**: Elevator checks for remaining requests and transitions accordingly
+
+### Threading & Concurrency
+
+- **Thread-Safe Operations**: All elevator operations use proper locking
+- **Condition Variables**: Producer-consumer pattern for request processing
+- **Graceful Shutdown**: Clean termination of all elevator threads
+- **Unified Request Storage**: Single source of truth for elevator requests
 
 ## 🎯 Design Principles Applied
 
@@ -134,7 +145,9 @@ Idle State
 - **Number of Elevators**: Configurable (default: 4)
 - **Building Floors**: 0-10 (configurable)
 - **Elevator Capacity**: Configurable per elevator
-- **Movement Speed**: 1 second per floor (configurable)
+- **Movement Speed**: 0.5 seconds per floor (realistic simulation)
+- **Thread Pool**: Managed by ThreadPoolExecutor for concurrent operations
+- **Request Storage**: Unified up_requests and down_requests sets
 
 ### Scheduling Strategy Selection
 
@@ -170,10 +183,12 @@ elevator_service.set_scheduling_strategy(SSTF())    # Shortest Seek Time First
 The system includes comprehensive demo scenarios:
 
 1. **Mixed Request Types**: External + Internal requests
-2. **State Transitions**: All three elevator states
-3. **Scheduling Strategies**: All three algorithms
+2. **State Transitions**: All three elevator states (Idle, MovingUp, MovingDown)
+3. **Scheduling Strategies**: All three algorithms (SCAN, FCFS, SSTF)
 4. **Concurrent Operations**: Multiple elevators working simultaneously
-5. **Edge Cases**: Boundary conditions and error handling
+5. **Threading Behavior**: Producer-consumer pattern with condition variables
+6. **Graceful Shutdown**: Clean termination of all threads
+7. **Edge Cases**: Boundary conditions and error handling
 
 ## 🔍 Debugging & Monitoring
 
@@ -217,10 +232,12 @@ DEBUG SCAN: Selected elevator abc123...
 This project demonstrates:
 
 1. **Advanced OOP Concepts**: Inheritance, polymorphism, encapsulation
-2. **Design Pattern Implementation**: State, Strategy, Observer, Singleton
+2. **Design Pattern Implementation**: State, Strategy, Observer, Singleton, Producer-Consumer
 3. **System Design**: Scalable, maintainable architecture
-4. **Concurrent Programming**: Thread-safe operations
+4. **Concurrent Programming**: Thread-safe operations, condition variables, graceful shutdown
 5. **Real-world Problem Solving**: Elevator control system design
+6. **Threading Concepts**: Locks, condition variables, producer-consumer patterns
+7. **Clean Architecture**: Unified request storage, simplified shutdown procedures
 
 ## 🤝 Contributing
 
@@ -237,4 +254,26 @@ This project is for educational purposes and demonstrates Low-Level Design princ
 
 ---
 
-**Built with ❤️ using Python and advanced design patterns**
+## 🔧 Recent Improvements
+
+### Threading Enhancements
+
+- **Condition Variables**: Implemented producer-consumer pattern for efficient request processing
+- **Thread Safety**: All operations properly synchronized with locks
+- **Graceful Shutdown**: Simplified shutdown procedure with clean thread termination
+
+### Architecture Refinements
+
+- **Unified Request Storage**: Eliminated redundant request_queue, using only up_requests/down_requests
+- **State Pattern Integration**: All request processing now handled by state pattern
+- **Simplified Code**: Removed unnecessary complexity while maintaining functionality
+
+### Performance Optimizations
+
+- **Realistic Timing**: 0.5-second floor movement simulation
+- **Efficient Notifications**: Condition variable-based thread communication
+- **Clean Termination**: Proper resource cleanup on shutdown
+
+---
+
+**Built with ❤️ using Python, advanced design patterns, and concurrent programming techniques**

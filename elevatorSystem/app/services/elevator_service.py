@@ -60,7 +60,7 @@ class ElevatorService:
         request = Request(floor_number, direction, RequestType.EXTERNAL)
         selected_elevator = self.scheduling_strategy.select_elevator(self.elevator_repository.get_all_elevators(), request)
         if selected_elevator:
-            selected_elevator.add_request(request)
+            selected_elevator.add_request_to_queue(request)
         else:
             raise ValueError("No elevator available")
         return selected_elevator
@@ -71,22 +71,18 @@ class ElevatorService:
         request = Request(destination_floor, Direction.IDLE, RequestType.INTERNAL)
         elevator = self.elevator_repository.find_by_id(elevator_id)
         if elevator:
-            elevator.add_request(request)
+            elevator.add_request_to_queue(request)
         else:
             raise ValueError("No elevator available")
         return elevator
 
     def shutdown(self) -> None:
         print("Shutting down elevator system...")
+
+        # Stop all elevators
         for elevator in self.elevator_repository.get_all_elevators():
             elevator.stop()
 
-        # Wait for all elevators to actually stop
-        print("Waiting for elevators to stop...")
-        import time
-
-        time.sleep(2)  # Give elevators time to stop
-
-        # Force shutdown the executor
+        # Shutdown the executor
         self.executor_service.shutdown(wait=True)
-        print("All elevators stopped successfully!")
+        print("Elevator system shutdown complete.")

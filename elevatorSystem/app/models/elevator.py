@@ -3,7 +3,7 @@ from uuid import uuid4
 from app.models.enums import ElevatorStatus, Direction, DoorStatus
 from app.models.request import Request
 from app.states.elevator_state import ElevatorState, IdleState
-from threading import Lock
+from threading import Lock, Condition
 from app.repositories.floor_repository import FloorRepository
 from app.observers.base_subject import BaseSubject
 
@@ -24,6 +24,7 @@ class Elevator(BaseSubject):
         self.up_requests: set[Request] = set()
         self.down_requests: set[Request] = set()
         self.current_floor_number_lock = Lock()
+        self.request_condition = Condition(self.current_floor_number_lock)
         self.is_running = True
         # add all floor door panel as observers for this elevator
         for floor in FloorRepository.get_instance().get_all_floors():
@@ -90,32 +91,43 @@ class Elevator(BaseSubject):
     def move(self) -> None:
         self.state.move(self)
 
-    def add_request(self, request: Request) -> None:
-        self.state.add_request(self, request)
+    def add_request_to_queue(self, request: Request) -> None:
+        with self.request_condition:
+            # Use the state pattern to add the request
+            self.state.add_request(self, request)
+            print(f"Elevator {self.id[:8]} added request: {request}")
+            self.request_condition.notify()
+
+    def process_requests(self) -> None:
+        while self.is_running:
+            # Wait for requests using condition variable
+            with self.request_condition:
+                while not self.has_requests() and self.is_running:
+                    self.request_condition.wait(timeout=0.1)
+
+            if not self.is_running:
+                break
+
+            # Process requests using state pattern
+            if self.has_requests():
+                self.move()
 
     def get_direction(self) -> Direction:
         return self.state.get_direction()
 
+    def has_requests(self) -> bool:
+        return len(self.up_requests) > 0 or len(self.down_requests) > 0
+
     def run(self) -> None:
-        while self.is_running:
-            self.move()
+        print(f"Elevator {self.id[:8]}... started.")
 
-            # Use very short sleep intervals to make shutdown more responsive
-            for _ in range(20):  # Break 1 second into 20 x 0.05 second intervals
-                if not self.is_running:
-                    break
-                try:
-                    import time
-
-                    time.sleep(0.05)
-                except KeyboardInterrupt:
-                    self.is_running = False
-                    break
+        # Use the new producer-consumer pattern
+        self.process_requests()
 
         print(f"Elevator {self.id[:8]}... has stopped.")
 
     def stop(self) -> None:
-        with self.current_floor_number_lock:
+        # Set the flag and notify waiting threads
+        with self.request_condition:
             self.is_running = False
-            self.set_status(ElevatorStatus.IDLE)
-            self.set_state(IdleState())
+            self.request_condition.notify_all()  # Wake up any waiting threads
