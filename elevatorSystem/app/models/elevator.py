@@ -24,7 +24,7 @@ class Elevator(BaseSubject):
         self.up_requests: set[Request] = set()
         self.down_requests: set[Request] = set()
         self.current_floor_number_lock = Lock()
-        self.request_condition = Condition(self.current_floor_number_lock)
+        self.request_condition = Condition(self.current_floor_number_lock)  # Condition variable for request processing
         self.is_running = True
         # add all floor door panel as observers for this elevator
         for floor in FloorRepository.get_instance().get_all_floors():
@@ -59,19 +59,23 @@ class Elevator(BaseSubject):
     def get_door_status(self) -> DoorStatus:
         return self.door_status
 
+    def set_direction(self, direction: Direction) -> None:
+        with self.current_floor_number_lock:
+            self.direction = direction
+
     def set_state(self, state: ElevatorState) -> None:
         with self.current_floor_number_lock:
             self.state = state
-            self.direction = state.get_direction()  # Update direction when state changes
 
     def set_status(self, status: ElevatorStatus) -> None:
         with self.current_floor_number_lock:
             self.status = status
             # Show appropriate message based on current state
-            if self.direction == Direction.IDLE:
-                message = f"Elevator {self.id} is now {status.value} and is idle at floor {self.current_floor_number}"
+            current_direction = self.get_direction()
+            if current_direction == Direction.IDLE:
+                message = f"Elevator {self.id[:8]} is now {status.value} and is idle at floor {self.current_floor_number}"
             else:
-                message = f"Elevator {self.id} is now {status.value} and is moving {self.direction.value} at floor {self.current_floor_number}"
+                message = f"Elevator {self.id[:8]} is now {status.value} and is moving {current_direction.value} at floor {self.current_floor_number}"
             self.notify_observers(message)
 
     def set_door_status(self, door_status: DoorStatus) -> None:
@@ -82,10 +86,11 @@ class Elevator(BaseSubject):
         with self.current_floor_number_lock:
             self.current_floor_number = floor_number
             # Show appropriate message based on current state
-            if self.direction == Direction.IDLE:
-                message = f"Elevator {self.id} is now at floor {floor_number} and is idle"
+            current_direction = self.get_direction()
+            if current_direction == Direction.IDLE:
+                message = f"Elevator {self.id[:8]} is now at floor {floor_number} and is idle"
             else:
-                message = f"Elevator {self.id} is now at floor {floor_number} and is moving {self.direction.value}"
+                message = f"Elevator {self.id[:8]} is now at floor {floor_number} and is moving {current_direction.value}"
             self.notify_observers(message)
 
     def move(self) -> None:
@@ -95,7 +100,7 @@ class Elevator(BaseSubject):
         with self.request_condition:
             # Use the state pattern to add the request
             self.state.add_request(self, request)
-            print(f"Elevator {self.id[:8]} added request: {request}")
+            print(f"Elevator {self.id[:8]} added request: {request.target_floor_number}")
             self.request_condition.notify()
 
     def process_requests(self) -> None:
@@ -103,7 +108,7 @@ class Elevator(BaseSubject):
             # Wait for requests using condition variable
             with self.request_condition:
                 while not self.has_requests() and self.is_running:
-                    self.request_condition.wait(timeout=0.1)
+                    self.request_condition.wait()
 
             if not self.is_running:
                 break

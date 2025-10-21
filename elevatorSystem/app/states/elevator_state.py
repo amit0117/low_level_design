@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 from app.models.request import Request
-from app.models.enums import Direction, RequestType
+from app.models.enums import Direction, RequestType, ElevatorStatus
 
 if TYPE_CHECKING:
     from app.models.elevator import Elevator
@@ -26,8 +26,12 @@ class IdleState(ElevatorState):
         # Check if there are any requests
         if elevator.get_up_requests():
             elevator.set_state(MovingUpState())
+            elevator.set_status(ElevatorStatus.MOVING)
+            elevator.set_direction(Direction.UP)
         elif elevator.get_down_requests():
             elevator.set_state(MovingDownState())
+            elevator.set_status(ElevatorStatus.MOVING)
+            elevator.set_direction(Direction.DOWN)
         # Else stay idle - no requests to process
 
     def add_request(self, elevator: "Elevator", request: Request) -> None:
@@ -47,6 +51,8 @@ class MovingUpState(ElevatorState):
         # If no UP requests or reached max floor, transition to IdleState
         if not elevator.get_up_requests() or elevator.get_current_floor_number() == elevator.get_max_floor_number():
             elevator.set_state(IdleState())
+            elevator.set_status(ElevatorStatus.IDLE)
+            elevator.set_direction(Direction.IDLE)
             return
 
         # Move up one floor
@@ -65,6 +71,8 @@ class MovingUpState(ElevatorState):
         # If no more UP requests, transition to IdleState to check for DOWN requests
         if not elevator.get_up_requests():
             elevator.set_state(IdleState())
+            elevator.set_status(ElevatorStatus.IDLE)
+            elevator.set_direction(Direction.IDLE)
             return
 
     def add_request(self, elevator: "Elevator", request: Request) -> None:
@@ -91,6 +99,8 @@ class MovingDownState(ElevatorState):
         # If no DOWN requests or reached min floor, transition to IdleState
         if not elevator.get_down_requests() or elevator.get_current_floor_number() == elevator.get_min_floor_number():
             elevator.set_state(IdleState())
+            elevator.set_status(ElevatorStatus.IDLE)
+            elevator.set_direction(Direction.IDLE)
             return
 
         # Move down one floor
@@ -109,7 +119,8 @@ class MovingDownState(ElevatorState):
         # If no more DOWN requests, transition to IdleState to check for UP requests
         if not elevator.get_down_requests():
             elevator.set_state(IdleState())
-            return
+            elevator.set_status(ElevatorStatus.IDLE)
+            elevator.set_direction(Direction.IDLE)
 
     def add_request(self, elevator: "Elevator", request: Request) -> None:
         # Internal requests always get added to the appropriate queue

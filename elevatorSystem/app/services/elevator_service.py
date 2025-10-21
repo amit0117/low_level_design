@@ -84,5 +84,5 @@ class ElevatorService:
             elevator.stop()
 
         # Shutdown the executor
-        self.executor_service.shutdown(wait=True)
+        self.executor_service.shutdown(wait=False, cancel_futures=True)
         print("Elevator system shutdown complete.")
