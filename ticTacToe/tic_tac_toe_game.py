@@ -5,7 +5,7 @@ Implements a comprehensive tic-tac-toe game with state pattern, observer pattern
 
 from app.models.player import HumanPlayer, ComputerPlayer
 from app.models.board import Board
-from app.models.enums import PlayerSymbol, GameStatus
+from app.models.enums import PlayerSymbol, GameStatus, PlayerType
 from app.models.game import Game
 import random
 
@@ -23,7 +23,11 @@ class TicTacToeGame:
         self.players = []
 
     def initialize_players(
-        self, player1_name: str = "Player 1", player2_name: str = "Player 2", player1_type: str = "human", player2_type: str = "human"
+        self,
+        player1_name: str = "Player 1",
+        player2_name: str = "Player 2",
+        player1_type: PlayerType = PlayerType.HUMAN,
+        player2_type: PlayerType = PlayerType.HUMAN,
     ):
         """
         Initialize players for the game
@@ -31,20 +35,20 @@ class TicTacToeGame:
         Args:
             player1_name: Name of first player
             player2_name: Name of second player
-            player1_type: Type of first player ('human' or 'computer')
-            player2_type: Type of second player ('human' or 'computer')
+            player1_type: Type of first player (PlayerType.HUMAN or PlayerType.COMPUTER)
+            player2_type: Type of second player (PlayerType.HUMAN or PlayerType.COMPUTER)
         """
         symbols = [PlayerSymbol.X, PlayerSymbol.O]
         random.shuffle(symbols)
 
         # Create first player
-        if player1_type.lower() == "computer":
+        if player1_type == PlayerType.COMPUTER:
             player1 = ComputerPlayer(player1_name, symbols[0])
         else:
             player1 = HumanPlayer(player1_name, symbols[0])
 
         # Create second player
-        if player2_type.lower() == "computer":
+        if player2_type == PlayerType.COMPUTER:
             player2 = ComputerPlayer(player2_name, symbols[1])
         else:
             player2 = HumanPlayer(player2_name, symbols[1])
@@ -112,10 +116,10 @@ class TicTacToeGame:
         current_player = self.game.get_current_player()
 
         # If computer player and no coordinates provided (or force_move is False), generate random move
-        if current_player.get_type().value == "COMPUTER" and (row is None or col is None) and not force_move:
-            available_cells = self.game.get_board().get_available_cells()
+        if current_player.get_type() == PlayerType.COMPUTER and (row is None or col is None) and not force_move:
+            available_cells = self.game.get_board().get_random_available_cell()
             if available_cells:
-                row, col = random.choice(available_cells)
+                row, col = available_cells
                 print(f"🤖 {current_player.get_name()} plays at ({row}, {col})")
         else:
             # For human players or when coordinates are explicitly provided
@@ -159,13 +163,19 @@ class TicTacToeGame:
         if self.game:
             self.game.end()
 
-    def play_game(self, player1_type: str = "human", player2_type: str = "computer", player1_name: str = "Human", player2_name: str = "Computer"):
+    def play_game(
+        self,
+        player1_type: PlayerType = PlayerType.HUMAN,
+        player2_type: PlayerType = PlayerType.COMPUTER,
+        player1_name: str = "Human",
+        player2_name: str = "Computer",
+    ):
         """
         Play a complete game with automatic move handling
 
         Args:
-            player1_type: Type of player 1 ('human' or 'computer')
-            player2_type: Type of player 2 ('human' or 'computer')
+            player1_type: Type of player 1 (PlayerType.HUMAN or PlayerType.COMPUTER)
+            player2_type: Type of player 2 (PlayerType.HUMAN or PlayerType.COMPUTER)
             player1_name: Name of player 1
             player2_name: Name of player 2
         """
@@ -179,9 +189,9 @@ class TicTacToeGame:
         while not self.is_game_over():
             current_player = self.get_current_player()
             player_name = current_player.get_name()
-            player_type = current_player.get_type().value
+            player_type = current_player.get_type()
 
-            if player_type == "HUMAN":
+            if player_type == PlayerType.HUMAN:
                 # For human players, get input
                 while True:
                     try:
@@ -207,10 +217,6 @@ class TicTacToeGame:
             print(f"🎉 Congratulations! {winner.get_name()} wins!")
         else:
             print("🤝 It's a draw!")
-
-        # Only end the game if it's not already completed
-        if not self.is_game_over():
-            self.end_game()
 
 
 if __name__ == "__main__":

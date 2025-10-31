@@ -4,9 +4,9 @@ Showcases different game scenarios, player types, and board configurations
 """
 
 from tic_tac_toe_game import TicTacToeGame
-from app.models.player import HumanPlayer, ComputerPlayer
+from app.models.player import HumanPlayer
 from app.models.board import Board
-from app.models.enums import PlayerSymbol, GameStatus
+from app.models.enums import PlayerSymbol, PlayerType
 from app.models.game import Game
 import time
 
@@ -18,7 +18,7 @@ def demo1_human_vs_computer():
     print("=" * 60)
 
     game = TicTacToeGame(board_size=3, consecutive_moves_to_win=3)
-    game.play_game(player1_type="human", player2_type="computer", player1_name="Human Player", player2_name="AI Assistant")
+    game.play_game(player1_type=PlayerType.HUMAN, player2_type=PlayerType.COMPUTER, player1_name="Human Player", player2_name="AI Assistant")
 
 
 def demo2_computer_vs_computer():
@@ -28,7 +28,7 @@ def demo2_computer_vs_computer():
     print("=" * 60)
 
     game = TicTacToeGame(board_size=3, consecutive_moves_to_win=3)
-    game.initialize_players("Alice", "Bob", "computer", "computer")
+    game.initialize_players("Alice", "Bob", PlayerType.COMPUTER, PlayerType.COMPUTER)
     game.start_game()
 
     # Automated gameplay
@@ -53,7 +53,7 @@ def demo3_large_board():
     print("=" * 60)
 
     game = TicTacToeGame(board_size=5, consecutive_moves_to_win=4)
-    game.initialize_players("Player A", "Player B", "computer", "computer")
+    game.initialize_players("Player A", "Player B", PlayerType.COMPUTER, PlayerType.COMPUTER)
     game.start_game()
 
     # Play a few moves to demonstrate
@@ -76,7 +76,7 @@ def demo3b_large_board_k3():
     print("=" * 60)
 
     game = TicTacToeGame(board_size=5, consecutive_moves_to_win=3)
-    game.initialize_players("Ravi", "Sneha", "computer", "computer")
+    game.initialize_players("Ravi", "Sneha", PlayerType.COMPUTER, PlayerType.COMPUTER)
     game.start_game()
 
     # Play moves that will lead to a win with 3 in a row
@@ -112,7 +112,7 @@ def demo4_manual_gameplay():
     print("=" * 60)
 
     game = TicTacToeGame(board_size=3, consecutive_moves_to_win=3)
-    game.initialize_players("Arjun", "Priya", "computer", "computer")
+    game.initialize_players("Arjun", "Priya", PlayerType.COMPUTER, PlayerType.COMPUTER)
     game.start_game()
 
     # Manually control the game
@@ -150,8 +150,6 @@ def demo5_game_state_transitions():
     print("=" * 60)
     print("🔄 DEMO 5: Game State Transitions")
     print("=" * 60)
-
-    from app.states.game_state import NotStartedState, InProgressState, CompletedState
 
     # Create game components
     board = Board(3)
@@ -206,7 +204,7 @@ def demo7_error_handling():
     print("=" * 60)
 
     game = TicTacToeGame(board_size=3, consecutive_moves_to_win=3)
-    game.initialize_players("Tester", "Dummy", "computer", "computer")
+    game.initialize_players("Tester", "Dummy", PlayerType.COMPUTER, PlayerType.COMPUTER)
     game.start_game()
 
     print("Testing invalid moves...")
