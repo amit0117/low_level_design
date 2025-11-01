@@ -18,6 +18,24 @@ class NotificationType(Enum):
     COMMENT_LIKE = "COMMENT_LIKE"
     POST_MENTION = "POST_MENTION"
 
+
 class CommentableType(Enum):
     POST = "POST"
     COMMENT = "COMMENT"
+
+
+class JobType(Enum):
+    FULL_TIME = "FULL_TIME"
+    PART_TIME = "PART_TIME"
+    CONTRACT = "CONTRACT"
+    INTERN = "INTERN"
+    FREELANCE = "FREELANCE"
+
+
+class ApplicationStatus(Enum):
+    PENDING = "PENDING"
+    REVIEWED = "REVIEWED"
+    INTERVIEW_SCHEDULED = "INTERVIEW_SCHEDULED"
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
+    WITHDRAWN = "WITHDRAWN"

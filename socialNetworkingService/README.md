@@ -21,10 +21,60 @@ A comprehensive social networking platform implementation demonstrating various 
 - **Singleton Pattern** - Single instance of SocialNetworkManager
 - **Observer Pattern** - Real-time notifications for connections and interactions
 - **State Pattern** - Connection request lifecycle management
-- **Strategy Pattern** - Flexible feed generation algorithms
+- **Strategy Pattern** - Flexible feed generation and job recommendation algorithms
 - **Repository Pattern** - Clean data access layer
 - **Service Pattern** - Business logic separation
 - **Facade Pattern** - Simplified interface to complex subsystem
+- **Adapter Pattern** - Search engine abstraction (ElasticSearch/SQL)
+- **Composite Pattern** - Hierarchical profile sections (Experience, Education, Skills)
+
+### Domain Entities
+
+| Domain Area                   | Key Entities                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------ |
+| **User & Profile**            | `User`, `Profile`, `Experience`, `Education`, `Skill`, `Connection`            |
+| **Content & Interaction**     | `Post`, `Comment`, `Like`, `Share`, `Feed`                                     |
+| **Messaging & Notifications** | `Message`, `Conversation`, `Notification`                                      |
+| **Jobs & Recruitment**        | `Job`, `Company`, `Application`                                                |
+| **System Infra**              | `FeedService`, `SearchService`, `RecommendationService`, `NotificationService` |
+
+### Core Entities Overview
+
+#### User Domain
+
+- **User**: Main user entity with authentication, profile, and social connections
+- **Profile**: Extended user profile with bio, location, and professional details
+- **Experience**: Work experience entries with company, role, and duration
+- **Education**: Educational background and qualifications
+- **Skill**: User skills and endorsements
+- **Connection**: Friend/follow relationships with state management
+
+#### Content Domain
+
+- **Post**: User-generated content with text, images, and metadata
+- **Comment**: Threaded comments on posts and other commentable entities
+- **Like**: User reactions to posts and comments
+- **Share**: Content sharing functionality
+- **Feed**: Personalized newsfeed for users
+
+#### Communication Domain
+
+- **Message**: Private messaging between users
+- **Conversation**: Message threads and chat sessions
+- **Notification**: Real-time alerts for social interactions
+
+#### Professional Domain
+
+- **Job**: Job postings and opportunities
+- **Company**: Company profiles and information
+- **Application**: Job applications and status tracking
+
+#### Service Layer
+
+- **FeedService**: Newsfeed generation and personalization
+- **SearchService**: User and content search functionality
+- **RecommendationService**: Content and connection suggestions
+- **NotificationService**: Notification delivery and management
 
 ## 📁 Project Structure
 
@@ -41,7 +91,9 @@ socialNetworkingService/
 │   │   ├── comment.py             # Comment model
 │   │   ├── connection.py          # Connection model
 │   │   ├── notification.py        # Notification model
-│   │   └── profile.py             # User profile model
+│   │   ├── profile.py             # User profile model
+│   │   ├── job.py                 # Job, Company, Application models
+│   │   └── enums.py               # Enum definitions
 │   ├── services/                  # Business logic layer
 │   │   ├── user_service.py        # User management service
 │   │   ├── post_service.py        # Post management service
@@ -56,7 +108,8 @@ socialNetworkingService/
 │   ├── states/                    # State pattern implementation
 │   │   └── connection_state.py   # Connection state management
 │   ├── strategies/                # Strategy pattern implementation
-│   │   └── feed_generation_strategy.py # Feed generation strategies
+│   │   ├── feed_generation_strategy.py # Feed generation strategies
+│   │   └── job_recommendation_strategy.py # Job recommendation strategies
 │   └── exceptions/                # Custom exceptions
 │       └── permission.py          # Permission-related exceptions
 ```
@@ -263,8 +316,23 @@ Notification Creation → User Notification List → Real-time Display
 
 #### Strategy Pattern
 
-- Flexible feed generation algorithms
-- Easy to add new feed strategies
+- **Feed Generation Strategies**:
+
+  - `ChronologicalStrategy`: Shows posts in reverse chronological order (most recent first)
+  - `EngagementBasedStrategy`: Prioritizes posts with high user engagement (likes + comments)
+  - `InterestBasedStrategy`: Recommends posts based on user's interests and past engagement
+  - `PopularityBasedStrategy`: Shows most popular posts across the network
+  - `MixedStrategy`: Combines multiple strategies for balanced recommendations
+
+- **Job Recommendation Strategies**:
+
+  - `SkillBasedStrategy`: Matches jobs based on user's skills and job requirements
+  - `LocationBasedStrategy`: Prioritizes jobs in user's preferred location
+  - `CompanyBasedStrategy`: Recommends jobs from companies where user's connections work
+  - `SalaryBasedStrategy`: Shows jobs within user's expected salary range
+  - `RecentJobsStrategy`: Displays most recently posted job opportunities
+
+- Easy to add new strategies
 - Runtime algorithm selection
 
 #### Repository Pattern
@@ -284,6 +352,137 @@ Notification Creation → User Notification List → Real-time Display
 - Simplified interface to complex subsystem
 - Hides internal complexity
 - Unified API for all operations
+
+#### Adapter Pattern
+
+- **Search Engine Abstraction**: Translates between different search interfaces
+- **ElasticSearch Integration**: Adapts ElasticSearch API to common search interface
+- **SQL Fallback Support**: Allows switching between search engines seamlessly
+- **Example Use Case**: `ProfileSearch` interface with `ElasticSearchAdapter` and `SQLSearchAdapter`
+
+```python
+# Common search interface
+class ProfileSearch:
+    def search(self, query: str) -> list:
+        pass
+
+# ElasticSearch adapter
+class ElasticSearchAdapter(ProfileSearch):
+    def search(self, query: str) -> list:
+        # ElasticSearch specific implementation
+        return elasticsearch_client.search(query)
+
+# SQL fallback adapter
+class SQLSearchAdapter(ProfileSearch):
+    def search(self, query: str) -> list:
+        # SQL implementation
+        return db.query("SELECT * FROM profiles WHERE bio ILIKE ?", [f"%{query}%"])
+```
+
+#### Composite Pattern
+
+- **Hierarchical Profile Structure**: Manages nested profile sections uniformly
+- **Profile Components**: Experience, Education, Skills treated as ProfileComponent
+- **Uniform Interface**: Same operations for leaf nodes (Skill) and composites (Experience)
+- **Dynamic Composition**: Add/remove profile sections at runtime
+
+```python
+# Component interface
+class ProfileComponent:
+    def show(self, indent: int = 0) -> None:
+        pass
+
+# Leaf: Individual skill
+class Skill(ProfileComponent):
+    def show(self, indent: int = 0) -> None:
+        print("  " * indent + f"Skill: {self.name}")
+
+# Composite: Experience section containing skills
+class ProfileSection(ProfileComponent):
+    def __init__(self, title: str):
+        self.title = title
+        self.children: list[ProfileComponent] = []
+
+    def add(self, component: ProfileComponent) -> None:
+        self.children.append(component)
+
+    def show(self, indent: int = 0) -> None:
+        print("  " * indent + f"{self.title}:")
+        for child in self.children:
+            child.show(indent + 1)
+```
+
+### Use Cases for Composite Pattern
+
+- **Profile Rendering**: Export profiles to PDF/HTML with uniform traversal
+- **Profile Versioning**: Compare entire profile hierarchies
+- **Dynamic Profile Sections**: Add custom sections like Projects, Certifications
+
+### Job Recommendation Strategies
+
+The system implements multiple strategies for job recommendations to provide personalized job suggestions:
+
+#### Skill-Based Strategy
+
+```python
+class SkillBasedStrategy(JobRecommendationStrategy):
+    def recommend_jobs(self, user: User, available_jobs: List[Job]) -> List[Job]:
+        user_skills = user.get_profile().get_skills()
+        # Score jobs based on skill matches with job requirements
+        # Higher score for jobs matching more user skills
+        return top_matching_jobs[:10]
+```
+
+**Use Case**: Perfect for developers looking for jobs matching their technical skills.
+
+#### Location-Based Strategy
+
+```python
+class LocationBasedStrategy(JobRecommendationStrategy):
+    def recommend_jobs(self, user: User, available_jobs: List[Job]) -> List[Job]:
+        user_location = user.get_profile().get_location()
+        # Prioritize jobs in same city/location
+        # Exact matches get highest priority
+        return location_matching_jobs[:10]
+```
+
+**Use Case**: Ideal for users who prefer local job opportunities.
+
+#### Company-Based Strategy
+
+```python
+class CompanyBasedStrategy(JobRecommendationStrategy):
+    def recommend_jobs(self, user: User, available_jobs: List[Job]) -> List[Job]:
+        friends_companies = get_companies_where_friends_work()
+        # Recommend jobs from companies where connections work
+        # Leverages network for job referrals
+        return network_based_jobs[:10]
+```
+
+**Use Case**: Great for leveraging professional network for job referrals.
+
+#### Salary-Based Strategy
+
+```python
+class SalaryBasedStrategy(JobRecommendationStrategy):
+    def recommend_jobs(self, user: User, available_jobs: List[Job]) -> List[Job]:
+        # Filter and sort jobs by salary range
+        # Show highest paying opportunities first
+        return highest_salary_jobs[:10]
+```
+
+**Use Case**: Useful for users focused on compensation packages.
+
+#### Recent Jobs Strategy
+
+```python
+class RecentJobsStrategy(JobRecommendationStrategy):
+    def recommend_jobs(self, user: User, available_jobs: List[Job]) -> List[Job]:
+        # Sort by posting date (most recent first)
+        return sorted_jobs_by_date[:10]
+```
+
+**Use Case**: Shows the latest job opportunities in the market.
 
 ### Concurrency & Thread Safety
 
@@ -352,7 +551,8 @@ This project is for educational purposes demonstrating design patterns and archi
 
 This project demonstrates:
 
-- **Design Patterns**: Singleton, Observer, State, Strategy, Repository, Service, Facade
+- **Design Patterns**: Singleton, Observer, State, Strategy, Repository, Service, Facade, Adapter, Composite
+- **Advanced Strategy Patterns**: Multiple feed generation strategies (chronological, engagement-based, interest-based, popularity-based, mixed) and job recommendation strategies (skill-based, location-based, company-based, salary-based, recent jobs)
 - **Architecture**: Clean separation of concerns, layered architecture
 - **Concurrency**: Thread safety, data consistency, race condition prevention
 - **Testing**: Comprehensive validation, multi-user scenarios
