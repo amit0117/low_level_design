@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Dict, Optional
+from threading import Lock
 from app.models.atm import ATM
 from app.models.user import User, Customer, Admin
 from app.models.account import Account
@@ -19,7 +20,27 @@ from app.services.transaction_service import TransactionService
 
 
 class ATMMachine:
+    _instance: Optional["ATMMachine"] = None
+    _lock: Lock = Lock()
+    _initialized: bool = False
+
+    def __new__(cls, atm_name: str = "Main ATM", initial_cash: float = 100000.0) -> "ATMMachine":
+        """Singleton implementation with thread safety"""
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance._atm_name = atm_name
+                    cls._instance._initial_cash = initial_cash
+        return cls._instance
+
     def __init__(self, atm_name: str = "Main ATM", initial_cash: float = 100000.0):
+        """Initialize the ATM machine (only once due to singleton)"""
+        if self._initialized:
+            return
+
+        atm_name = getattr(self, "_atm_name", atm_name)
+        initial_cash = getattr(self, "_initial_cash", initial_cash)
         print(f"\n{'='*60}")
         print(f"🚀 Initializing ATM Machine: {atm_name}")
         print(f"{'='*60}\n")
@@ -67,6 +88,13 @@ class ATMMachine:
         print(f"   ATM ID: {self.atm.get_id()[:8]}")
         print(f"   Initial Cash: ₹{initial_cash:,.2f}")
         print(f"   Banks Available: {self.bank_repository.get_all_banks()}\n")
+
+        self._initialized = True
+
+    @classmethod
+    def get_instance(cls, atm_name: str = "Main ATM", initial_cash: float = 100000.0) -> "ATMMachine":
+        """Get the singleton instance of ATMMachine"""
+        return cls(atm_name=atm_name, initial_cash=initial_cash)
 
     def add_user(
         self, name: str, bank_name: str, account_number: str, account_type: AccountType, initial_balance: float, pin: str, card_number: str

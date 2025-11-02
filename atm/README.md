@@ -20,14 +20,14 @@ A comprehensive Automated Teller Machine (ATM) system implementation demonstrati
 
 ### Design Patterns Implemented
 
+- **Singleton Pattern** - ATMMachine singleton instance (ensures single ATM machine instance)
 - **Template Method Pattern** - Transaction execution flow (validate → authorize → perform → dispense → receipt)
 - **State Pattern** - ATM state lifecycle management (Idle → Card Inserted → Authenticated → Transaction Selected → Processing)
 - **Observer Pattern** - Transaction notifications to users (both sender and receiver for transfers)
 - **Adapter Pattern** - Multi-bank integration (HDFC, SBI, ICICI with different APIs)
 - **Factory Pattern** - Transaction creation (Withdrawal, Deposit, Transfer, Balance Inquiry factories)
-- **Repository Pattern** - Bank server management and access
+- **Repository Pattern** - Bank server management and access (Singleton pattern)
 - **Service Pattern** - Transaction service layer for business logic
-- **Singleton Pattern** - Bank repository singleton instance
 
 ### Domain Entities
 
@@ -227,11 +227,11 @@ The demo includes the following test scenarios:
 ### System Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    ATM MACHINE LAYER                          │
-│              ATMMachine (Setup & Operations)                  │
+┌───────────────────────────────────────────────────────────------┐
+│                    ATM MACHINE LAYER                            │
+│              ATMMachine (Setup & Operations)                    │
 │         (Bank setup, User management, Transaction orchestration)│
-└─────────────────────┬───────────────────────────────────────┘
+└─────────────────────┬───────────────────────────────────────----┘
                       │
 ┌─────────────────────┴───────────────────────────────────────┐
 │                   SERVICE LAYER                             │
@@ -242,32 +242,32 @@ The demo includes the following test scenarios:
 ┌─────────────────────┴───────────────────────────────────────┐
 │                   ATM MODEL LAYER                           │
 │         ATM (State Pattern - State transitions)             │
-│    CardReader │ Keypad │ CashDispenser (Observer)          │
+│    CardReader │ Keypad │ CashDispenser (Observer)           │
 └─────────────────────┬───────────────────────────────────────┘
                       │
 ┌─────────────────────┴───────────────────────────────────────┐
-│              TRANSACTION LAYER                               │
+│              TRANSACTION LAYER                              │
 │     Transaction (Template Method Pattern)                   │
 │  Withdrawal │ Deposit │ Transfer │ BalanceInquiry           │
 │         (Observer Pattern - Notify users)                   │
 └─────────────────────┬───────────────────────────────────────┘
                       │
 ┌─────────────────────┴───────────────────────────────────────┐
-│                 REPOSITORY LAYER                             │
+│                 REPOSITORY LAYER                            │
 │            BankRepository (Singleton)                       │
 │    (Bank server management and access)                      │
 └─────────────────────┬───────────────────────────────────────┘
                       │
 ┌─────────────────────┴───────────────────────────────────────┐
-│                 ADAPTER LAYER                                │
+│                 ADAPTER LAYER                               │
 │      HDFCBankAdapter │ SBIBankAdapter │ ICICIBankAdapter    │
-│         (Adapter Pattern - Bank API abstraction)           │
+│         (Adapter Pattern - Bank API abstraction)            │
 └─────────────────────┬───────────────────────────────────────┘
                       │
 ┌─────────────────────┴───────────────────────────────────────┐
-│                   BANK LAYER                                 │
+│                   BANK LAYER                                │
 │       HDFCBank │ SBIBank │ ICICIBank (Mock banks)           │
-│         (Different proprietary APIs)                       │
+│         (Different proprietary APIs)                        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -359,6 +359,41 @@ Transaction Complete → Eject Card → IdleState
 ## 🏗️ Architecture
 
 ### Design Patterns
+
+#### Singleton Pattern
+
+The `ATMMachine` class ensures a single instance across the application:
+
+```python
+class ATMMachine:
+    _instance: Optional["ATMMachine"] = None
+    _lock: Lock = Lock()
+    _initialized: bool = False
+
+    def __new__(cls, atm_name: str = "Main ATM", initial_cash: float = 100000.0) -> "ATMMachine":
+        """Singleton implementation with thread safety"""
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance._atm_name = atm_name
+                    cls._instance._initial_cash = initial_cash
+        return cls._instance
+
+    @classmethod
+    def get_instance(cls, atm_name: str = "Main ATM", initial_cash: float = 100000.0) -> "ATMMachine":
+        """Get the singleton instance of ATMMachine"""
+        return cls(atm_name=atm_name, initial_cash=initial_cash)
+```
+
+**Benefits**:
+
+- Single ATM machine instance across the application
+- Thread-safe implementation with double-checked locking
+- Centralized access point for all ATM operations
+- Prevents multiple ATM instances from conflicting
+
+**Use Case**: Ensures that only one ATM machine instance exists, maintaining consistency in bank registrations, user management, and transaction handling.
 
 #### Template Method Pattern
 
@@ -501,6 +536,13 @@ Transaction factories create appropriate transaction objects:
 - Easy to test and maintain
 
 ### Use Cases for Design Patterns
+
+#### Singleton Pattern
+
+- **Single ATM Instance**: Ensures only one ATM machine instance exists
+- **Centralized Management**: All ATM operations go through single instance
+- **Resource Efficiency**: Prevents duplicate bank registrations and resource allocation
+- **Thread Safety**: Safe concurrent access with double-checked locking
 
 #### Template Method Pattern
 
