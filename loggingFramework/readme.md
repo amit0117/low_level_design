@@ -5,7 +5,7 @@
 ## 1. UML Class Diagram (Textual / Interview-Friendly)
 
 ```
-+-------------------+        uses        +-------------------+
++-------------------+        uses       +-------------------+
 |      Logger       |------------------>|   LogConfig       |
 |-------------------|                   |-------------------|
 | - config          |                   | - minLevel        |
@@ -31,7 +31,7 @@
          v
 +-------------------+        Chain of Responsibility
 |  LogHandlerChain  |--------------------------------+
-+-------------------+                                 |
++-------------------+                                |
          |                                           |
          | handles                                   |
          v                                           |
@@ -67,9 +67,9 @@
 +-------------------+  +-------------------+  +---------------------+
 | ConsoleAppender   |  | FileAppender      |  | DatabaseAppender    |
 |-------------------|  |-------------------|  |---------------------|
-| - formatter       |  | - formatter       |  | - db_url           |
-+-------------------+  | - file_path       |  | - username         |
-                       | - max_file_size   |  | - password         |
+| - formatter       |  | - formatter       |  | - db_url            |
++-------------------+  | - file_path       |  | - username          |
+                       | - max_file_size   |  | - password          |
                        | - max_files       |  |---------------------|
                        | - current_size    |  | + append()          |
                        |-------------------|  +---------------------+
@@ -81,7 +81,7 @@
 +-------------------+
 |    LogMessage     |
 |-------------------|
-| - timestamp        |
+| - timestamp      |
 | - level           |
 | - message         |
 | - threadId        |
@@ -362,7 +362,7 @@ Application Thread
         | logger.info("Order placed")
         v
 +------------------+
-|      Logger       |  (Singleton + Facade)
+|      Logger      |  (Singleton + Facade)
 +------------------+
         |
         | 1. Check min_level filter
@@ -370,25 +370,25 @@ Application Thread
         | 3. Enqueue to queue
         v
 +------------------+
-|   Queue (async)   |  (Non-blocking)
+|   Queue (async)  |  (Non-blocking)
 +------------------+
         |
         | Worker thread dequeues
         v
 +------------------+
-| LogHandlerChain   |  (Chain of Responsibility)
+| LogHandlerChain  |  (Chain of Responsibility)
 +------------------+
         |
         | Traverses chain based on log level
         v
 +------------------+
-|  InfoHandler      |  (Processes INFO level)
+|  InfoHandler     |  (Processes INFO level)
 +------------------+
         |
         | Forwards to all appenders
         v
 +------------------+
-|   Appenders       |  (Strategy Pattern)
+|   Appenders      |  (Strategy Pattern)
 +------------------+
    |        |        |
    v        v        v
