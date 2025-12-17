@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import re
 from app.models.log_message import LogMessage
 from app.models.enums import LogLevel
 from typing import TYPE_CHECKING
@@ -17,9 +18,12 @@ class LogHandler(ABC):
         return handler
 
     def handle(self, log_message: LogMessage, appenders: list["AppenderStrategy"]):
-        if self.level.value <= log_message.get_level().value:
+        # Only process if exact match
+        if self.level.value == log_message.get_level().value:
             self.process(log_message, appenders)
+            return  # Stop after processing
 
+        # Forward to next handler
         if self.next_handler:
             self.next_handler.handle(log_message, appenders)
 
