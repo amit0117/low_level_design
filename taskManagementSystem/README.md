@@ -190,31 +190,31 @@ class TaskRepository:
 
 ```
 ┌─────────────────────────────────────────┐
-│              Demo Layer                  │
-│              (demo.py)                   │
+│              Demo Layer                 │
+│              (demo.py)                  │
 └─────────────────────────────────────────┘
                     │
 ┌─────────────────────────────────────────┐
-│            Manager Layer                 │
-│         TaskManager (Facade)             │
+│            Manager Layer                │
+│         TaskManager (Facade)            │
 └─────────────────────────────────────────┘
                     │
 ┌─────────────────────────────────────────┐
-│          Repository Layer                │
-│    TaskRepository, UserRepository        │
+│          Repository Layer               │
+│    TaskRepository, UserRepository       │
 └─────────────────────────────────────────┘
                     │
 ┌─────────────────────────────────────────┐
-│            Domain Layer                  │
+│            Domain Layer                 │
 │    Task, User, TaskList, TaskComment    │
-│    ActivityLog, TaskTag                  │
+│    ActivityLog, TaskTag                 │
 └─────────────────────────────────────────┘
                     │
 ┌─────────────────────────────────────────┐
 │         Strategy/State Layer            │
 │    TaskSearchStrategy implementations   │
 │    TaskState implementations            │
-│    Observer implementations              │
+│    Observer implementations             │
 └─────────────────────────────────────────┘
 ```
 
