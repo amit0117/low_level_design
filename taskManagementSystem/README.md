@@ -146,6 +146,7 @@ manager.reopen_task(task_id)
 ```
 
 **State Transitions:**
+
 - `TodoState`: Initial state, can only transition to `InProgressState`
 - `InProgressState`: Can transition to `InReviewState`
 - `InReviewState`: Can transition to `CompletedState`
@@ -226,6 +227,516 @@ class TaskRepository:
 - **States**: Task lifecycle management
 - **Observers**: Event handling and notifications
 - **Builders**: Complex object construction
+
+## 📊 Entity Relationship Diagram
+
+### Core Entities and Relationships
+
+```
+┌─────────────┐
+│    User     │
+│─────────────│
+│ id          │
+│ name        │
+│ email       │
+│ task_history│
+└──────┬──────┘
+       │
+       │ 1..* (creates/assigned to)
+       │
+       ▼
+┌───────────────────────────────────── ┐
+│              Task                    │
+│──────────────────────────────────────│
+│ id                                   │
+│ title                                │
+│ description                          │
+│ created_by (User)                    │
+│ assignees (List<User>)               │
+│ priority (TaskPriority)              │
+│ status (TaskStatus)                  │
+│ due_date                             │
+│ tags (List<TaskTag>)                 │
+│ parent_task_id (TaskList ID)         │
+│ current_state (TaskState)            │
+│ comments (List<TaskComment>)         │
+│ activity_log (List<ActivityLog>)     │
+│ observers (List<TaskObserver>)       │
+└──────┬───────────────────────────────┘
+       │
+       │ 1..* (contains)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│           TaskList                  │
+│─────────────────────────────────────│
+│ id                                  │
+│ name                                │
+│ created_by (User)                   │
+│ sub_tasks (List<Task>)              │
+│ status (TaskStatus)                 │
+│ created_at                          │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│         TaskComment                 │
+│─────────────────────────────────────│
+│ id                                  │
+│ task (Task)                         │
+│ comment (String)                    │
+│ author (User)                       │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│         ActivityLog                 │
+│─────────────────────────────────────│
+│ id                                  │
+│ task (Task)                         │
+│ user (User)                         │
+│ activity (String)                   │
+│ timestamp                           │
+└─────────────────────────────────────┘
+```
+
+### Entity Relationships
+
+1. **User ↔ Task** (Many-to-Many)
+
+   - A User can create multiple Tasks (`created_by`)
+   - A User can be assigned to multiple Tasks (`assignees`)
+   - A Task can have multiple Users (creator + assignees)
+   - Users maintain a `task_history` list of all tasks they're involved with
+
+2. **Task ↔ TaskList** (Many-to-One)
+
+   - A Task can belong to one TaskList (`parent_task_id`)
+   - A TaskList can contain multiple Tasks (`sub_tasks`)
+   - Tasks can exist independently (standalone tasks)
+
+3. **Task ↔ TaskComment** (One-to-Many)
+
+   - A Task can have multiple Comments
+   - Each Comment belongs to one Task
+   - Comments are linear (no nesting)
+
+4. **Task ↔ ActivityLog** (One-to-Many)
+
+   - A Task can have multiple ActivityLog entries
+   - Each ActivityLog belongs to one Task
+   - ActivityLog tracks all task modifications
+
+5. **Task ↔ User (Observer Pattern)**
+
+   - Task implements `TaskSubject`
+   - User implements `TaskObserver`
+   - Task notifies Users on status changes, comments, and activities
+
+6. **Task ↔ TaskState** (One-to-One)
+   - A Task has one current State
+   - State transitions: TODO → IN_PROGRESS → IN_REVIEW → COMPLETED
+
+## 🔄 Data Flow Diagrams
+
+### 1. Task Creation Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. create_user()
+     ▼
+┌─────────────────┐
+│  TaskManager    │
+│  (Singleton)    │
+└────┬────────────┘
+     │
+     │ 2. create_user()
+     ▼
+┌─────────────────┐
+│ UserRepository  │
+│  (Singleton)    │
+└────┬────────────┘
+     │
+     │ 3. Store User
+     ▼
+┌─────────────────┐
+│  User Object    │
+└─────────────────┘
+
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. TaskBuilder.build()
+     ▼
+┌─────────────────┐
+│   TaskBuilder   │
+│   (Builder)     │
+└────┬────────────┘
+     │
+     │ 2. Create Task
+     ▼
+┌─────────────────┐
+│  Task Object    │
+│  - Add observers│
+│  - Init state   │
+│  - Create log   │
+└────┬────────────┘
+     │
+     │ 3. add_task()
+     ▼
+┌─────────────────┐
+│  TaskManager    │
+└────┬────────────┘
+     │
+     │ 4. Validate users
+     │ 5. add_task()
+     ▼
+┌─────────────────┐
+│ TaskRepository  │
+└────┬────────────┘
+     │
+     │ 6. Store Task
+     ▼
+┌─────────────────┐
+│  Task Stored    │
+│  in Repository  │
+└─────────────────┘
+```
+
+### 2. Task State Transition Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. start_task_progress(task_id)
+     ▼
+┌─────────────────┐
+│  TaskManager    │
+└────┬────────────┘
+     │
+     │ 2. Get Task from Repository
+     ▼
+┌─────────────────┐
+│  Task Object    │
+│  (TodoState)    │
+└────┬────────────┘
+     │
+     │ 3. current_state.start_progress()
+     ▼
+┌─────────────────┐
+│  TodoState      │
+└────┬────────────┘
+     │
+     │ 4. set_status(IN_PROGRESS)
+     │ 5. set_state(InProgressState)
+     ▼
+┌─────────────────┐
+│  Task Object    │
+│  (InProgress)   │
+└────┬────────────┘
+     │
+     │ 6. notify_observers()
+     ▼
+┌─────────────────┐
+│  All Observers  │
+│  (Users)        │
+└────┬────────────┘
+     │
+     │ 7. update_on_task_status_change()
+     ▼
+┌─────────────────┐
+│  User Notified  │
+└─────────────────┘
+```
+
+### 3. Task Search Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. add_task_search_strategy()
+     │    search_tasks(query)
+     ▼
+┌─────────────────┐
+│  TaskManager    │
+└────┬────────────┘
+     │
+     │ 2. Get Strategy
+     ▼
+┌─────────────────┐
+│ SearchStrategy  │
+│ (Strategy)      │
+└────┬────────────┘
+     │
+     │ 3. search(query)
+     ▼
+┌─────────────────┐
+│ TaskRepository  │
+└────┬────────────┘
+     │
+     │ 4. Query Tasks
+     │    - get_tasks_by_priority()
+     │    - get_tasks_by_status()
+     │    - get_tasks_by_assignee()
+     │    - get_all_tasks()
+     ▼
+┌─────────────────┐
+│  Filtered Tasks │
+└────┬────────────┘
+     │
+     │ 5. Return Results
+     ▼
+┌─────────────────┐
+│  Task List      │
+└─────────────────┘
+```
+
+### 4. Task Comment Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. add_task_comment(task_id, text, user)
+     ▼
+┌─────────────────┐
+│  TaskManager    │
+└────┬────────────┘
+     │
+     │ 2. Get Task
+     │ 3. Create TaskComment
+     ▼
+┌─────────────────┐
+│  TaskComment    │
+│  - task         │
+│  - comment      │
+│  - author       │
+└────┬────────────┘
+     │
+     │ 4. task.add_comment()
+     ▼
+┌─────────────────┐
+│  Task Object    │
+└────┬────────────┘
+     │
+     │ 5. Add to comments list
+     │ 6. notify_observers()
+     ▼
+┌─────────────────┐
+│  All Observers  │
+│  (Users)        │
+└────┬────────────┘
+     │
+     │ 7. update_on_task_comment_added()
+     ▼
+┌─────────────────┐
+│  Users Notified │
+└─────────────────┘
+```
+
+### 5. Task List Management Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. create_task_list(name, user, tasks)
+     ▼
+┌─────────────────┐
+│  TaskManager    │
+└────┬────────────┘
+     │
+     │ 2. Create TaskList
+     │ 3. Set parent_task_id for tasks
+     ▼
+┌─────────────────┐
+│   TaskList      │
+│   - name        │
+│   - created_by  │
+│   - sub_tasks   │
+└────┬────────────┘
+     │
+     │ 4. add_task_list()
+     ▼
+┌─────────────────┐
+│ TaskRepository  │
+└────┬────────────┘
+     │
+     │ 5. Store TaskList
+     ▼
+┌─────────────────┐
+│  TaskList       │
+│  Stored         │
+└─────────────────┘
+
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. add_task_to_list(list_id, task_id)
+     ▼
+┌─────────────────┐
+│  TaskManager    │
+└────┬────────────┘
+     │
+     │ 2. Get TaskList & Task
+     │ 3. task_list.add_sub_task()
+     ▼
+┌─────────────────┐
+│   TaskList      │
+└────┬────────────┘
+     │
+     │ 4. Set task.parent_task_id
+     │ 5. Add to sub_tasks
+     │ 6. update_task_list()
+     ▼
+┌─────────────────┐
+│ TaskRepository  │
+└─────────────────┘
+```
+
+### 6. Observer Notification Flow
+
+```
+┌─────────────────┐
+│  Task Object    │
+│  (Subject)      │
+└────┬────────────┘
+     │
+     │ Status/Comment/Activity Change
+     │
+     ├─────────────────┬─────────────────┐
+     │                 │                 │
+     ▼                 ▼                 ▼
+┌──────────┐    ┌──────────┐    ┌──────────┐
+│ Observer │    │ Observer │    │ Observer │
+│  (User1) │    │  (User2) │    │  (User3) │
+└────┬─────┘    └────┬─────┘    └────┬─────┘
+     │               │               │
+     │               │               │
+     ▼               ▼               ▼
+┌─────────────────────────────────────────┐
+│      Notification Methods               │
+│  - update_on_task_status_change()       │
+│  - update_on_task_comment_added()       │
+│  - update_on_task_activity_log_added()  │
+└─────────────────────────────────────────┘
+```
+
+### 7. Complete System Interaction Flow
+
+```
+┌──────────────┐
+│   Client     │
+│  (demo.py)   │
+└──────┬───────┘
+       │
+       │ All Operations
+       ▼
+┌─────────────────────────────────────┐
+│         TaskManager                 │
+│         (Facade Pattern)            │
+│  - User Management                  │
+│  - Task Management                  │
+│  - Task List Management             │
+│  - Search Management                │
+└──────┬──────────────────────────────┘
+       │
+       ├──────────────────┬──────────────────┐
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   User      │  │    Task     │  │  TaskList   │
+│ Repository  │  │ Repository  │  │  (via Task  │
+│             │  │             │  │   Repo)     │
+└─────────────┘  └─────────────┘  └─────────────┘
+       │                  │                  │
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   Users     │  │   Tasks     │  │  TaskLists  │
+│  Storage    │  │   Storage   │  │   Storage   │
+└─────────────┘  └─────────────┘  └─────────────┘
+
+       │                  │
+       │                  │
+       ▼                  ▼
+┌─────────────┐  ┌─────────────┐
+│   Task      │  │   Task      │
+│  Observers  │  │   States    │
+│  (Users)    │  │  (State     │
+│             │  │   Pattern)  │
+└─────────────┘  └─────────────┘
+
+       │                  │
+       │                  │
+       ▼                  ▼
+┌─────────────┐  ┌─────────────┐
+│  Search     │  │  Builder    │
+│ Strategies  │  │  (Task      │
+│  (Strategy  │  │   Builder)  │
+│   Pattern)  │  │             │
+└─────────────┘  └─────────────┘
+```
+
+## 📋 Entity Attributes Summary
+
+### User Entity
+
+- `id`: Unique identifier (UUID)
+- `name`: User's full name
+- `email`: User's email address
+- `task_history`: List of tasks user is involved with (created or assigned)
+
+### Task Entity
+
+- `id`: Unique identifier (UUID)
+- `title`: Task title
+- `description`: Task description
+- `created_by`: User who created the task
+- `assignees`: List of users assigned to the task
+- `priority`: Task priority (LOW, MEDIUM, HIGH, URGENT)
+- `status`: Task status (TODO, IN_PROGRESS, IN_REVIEW, COMPLETED)
+- `due_date`: Task due date
+- `tags`: List of tags for categorization
+- `parent_task_id`: ID of TaskList this task belongs to (optional)
+- `current_state`: Current state object (State Pattern)
+- `comments`: List of TaskComment objects
+- `activity_log`: List of ActivityLog objects
+- `observers`: List of TaskObserver objects (Observer Pattern)
+- `created_at`: Task creation timestamp
+
+### TaskList Entity
+
+- `id`: Unique identifier (UUID)
+- `name`: Task list name (e.g., "Sprint 1", "Project Alpha")
+- `created_by`: User who created the task list
+- `sub_tasks`: List of Task objects in this list
+- `status`: Task list status (optional)
+- `created_at`: Task list creation timestamp
+
+### TaskComment Entity
+
+- `id`: Unique identifier (UUID)
+- `task`: Reference to the Task this comment belongs to
+- `comment`: Comment text
+- `author`: User who wrote the comment
+
+### ActivityLog Entity
+
+- `id`: Unique identifier (UUID)
+- `task`: Reference to the Task this activity belongs to
+- `user`: User who performed the activity
+- `activity`: Description of the activity
+- `timestamp`: When the activity occurred
 
 ## 📁 Project Structure
 
@@ -600,6 +1111,7 @@ python3 demo.py
 ```
 
 The demo covers:
+
 - User creation and management
 - Task creation with Builder Pattern
 - Task updates and modifications
@@ -615,6 +1127,7 @@ The demo covers:
 ### Test Structure
 
 The demo script (`demo.py`) includes comprehensive examples of:
+
 - ✅ All CRUD operations
 - ✅ State pattern transitions
 - ✅ Search strategies
@@ -627,6 +1140,7 @@ The demo script (`demo.py`) includes comprehensive examples of:
 ### Thread Safety
 
 All operations are thread-safe using locks:
+
 - `TaskManager` uses singleton pattern with thread-safe initialization
 - `TaskRepository` and `UserRepository` use locks for concurrent access
 - `Task` and `TaskList` use locks for state modifications
@@ -737,4 +1251,3 @@ For questions, issues, or contributions:
 ---
 
 **Made with ❤️ using Python, Design Patterns, and Clean Architecture principles**
-
