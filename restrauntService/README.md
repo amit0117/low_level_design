@@ -151,6 +151,428 @@ rms.add_item_to_inventory(item, quantity)
 rms.remove_item_from_inventory(item, quantity)
 ```
 
+## 📊 Entity Relationship Diagram
+
+### Core Entities and Relationships
+
+```
+┌─────────────────────────────────────┐
+│   RestrauntManagementApp            │
+│─────────────────────────────────────│
+│ (Singleton/Facade)                  │
+│ - table_service                     │
+│ - order_service                     │
+│ - inventory_service                 │
+│ - staff_repo                        │
+│ - menu_repo                         │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (manages)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│            Table                    │
+│─────────────────────────────────────│
+│ table_number                        │
+│ capacity                            │
+│ status (TableStatus)                │
+│ state (TableState)                  │
+│ observers (List<Observer>)          │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (has)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│            Order                    │
+│─────────────────────────────────────│
+│ order_id                            │
+│ table (Table)                       │
+│ customer (Customer)                 │
+│ items (List<OrderItem>)             │
+│ total_amount                        │
+│ status (OrderStatus)                │
+│ observers (List<Observer>)          │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (contains)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│          OrderItem                  │
+│─────────────────────────────────────│
+│ id                                  │
+│ item (Item)                         │
+│ quantity                            │
+│ status (OrderItemStatus)            │
+│ state (OrderItemState)              │
+│ subtotal                            │
+└──────┬──────────────────────────────┘
+       │
+       │ references
+       │
+       ▼
+┌─────────────────────────────────────┐
+│            Item                     │
+│─────────────────────────────────────│
+│ id                                  │
+│ name                                │
+│ price                               │
+│ type (ItemType)                     │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┐
+       ▼              ▼
+┌─────────────┐ ┌─────────────┐
+│  VegItem    │ │ NonVegItem  │
+└─────────────┘ └─────────────┘
+
+┌─────────────────────────────────────┐
+│          Customer                   │
+│─────────────────────────────────────│
+│ id                                  │
+│ name                                │
+│ (Observer for Order updates)        │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│            Staff                    │
+│─────────────────────────────────────│
+│ id                                  │
+│ name                                │
+│ role (StaffRole)                    │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┬──────────────┐
+       ▼              ▼              ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│   Manager   │ │    Chef     │ │   Waiter    │
+└─────────────┘ └─────────────┘ └─────────────┘
+
+┌─────────────────────────────────────┐
+│          Payment                    │
+│─────────────────────────────────────│
+│ amount                              │
+│ payment_method (PaymentMethod)      │
+│ payment_status (PaymentStatus)      │
+│ payment_strategy (PaymentStrategy)  │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│         Inventory                   │
+│─────────────────────────────────────│
+│ item (Item)                         │
+│ quantity                            │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│            Menu                     │
+│─────────────────────────────────────│
+│ items (List<Item>)                  │
+└─────────────────────────────────────┘
+```
+
+### Entity Relationships
+
+1. **RestrauntManagementApp ↔ Table** (One-to-Many via Repository)
+
+   - App manages multiple Tables
+   - Tables stored in TableRepository
+
+2. **RestrauntManagementApp ↔ Order** (One-to-Many via Repository)
+
+   - App manages multiple Orders
+   - Orders stored in OrderRepository
+
+3. **Table ↔ Order** (One-to-Many)
+
+   - A Table can have multiple Orders (over time)
+   - Each Order is associated with one Table
+   - Only one active Order per table at a time
+
+4. **Order ↔ OrderItem** (One-to-Many)
+
+   - An Order contains multiple OrderItems
+   - Each OrderItem belongs to one Order
+
+5. **OrderItem ↔ Item** (Many-to-One)
+
+   - An OrderItem references one Item
+   - An Item can be referenced by multiple OrderItems
+
+6. **Item Inheritance Hierarchy**
+
+   - `Item` (base class)
+   - `VegItem`, `NonVegItem` (subclasses)
+
+7. **Order ↔ Customer** (Many-to-One)
+
+   - An Order is placed by one Customer
+   - A Customer can place multiple Orders
+
+8. **Table ↔ TableState** (One-to-One)
+
+   - Each Table has one current State
+   - State transitions: Available → Reserved → Occupied → Available
+
+9. **OrderItem ↔ OrderItemState** (One-to-One)
+
+   - Each OrderItem has one current State
+   - State transitions: Ordered → Preparing → Ready → Served
+
+10. **Order ↔ Payment** (One-to-One)
+
+    - An Order can have one Payment
+    - Payment created when order is paid
+
+11. **Item ↔ Inventory** (One-to-One)
+
+    - An Item has one Inventory record
+    - Inventory tracks stock quantity
+
+12. **Menu ↔ Item** (One-to-Many)
+
+    - A Menu contains multiple Items
+    - Items can be added/removed from Menu
+
+13. **Staff Inheritance Hierarchy**
+
+    - `Staff` (base class)
+    - `Manager`, `Chef`, `Waiter` (subclasses)
+
+14. **Observer Pattern Relationships**
+
+    - Order implements `OrderSubject` - notifies on status changes
+    - Table implements `TableSubject` - notifies on state changes
+    - Customer implements `OrderObserver` - receives order notifications
+
+15. **Strategy Pattern Relationships**
+
+    - Payment uses `PaymentStrategy` (delegates payment processing)
+    - Supports CreditCardPayment, UPIPayment, CashPayment
+
+16. **Decorator Pattern Relationships**
+    - Bill generation uses decorators: TaxDecorator, ServiceChargeDecorator, DiscountDecorator
+    - Decorators wrap base bill calculation
+
+## 🔄 Data Flow Diagrams
+
+### 1. Order Creation Flow
+
+```
+┌──────────┐
+│ Customer │
+└────┬─────┘
+     │
+     │ 1. create_order_with_items()
+     ▼
+┌─────────────────┐
+│RestrauntMgmtApp │
+└────┬────────────┘
+     │
+     │ 2. order_service.create_order()
+     ▼
+┌─────────────────┐
+│  OrderService   │
+└────┬────────────┘
+     │
+     │ 3. Validate table
+     │ 4. Check inventory
+     │ 5. Create Order & OrderItems
+     ▼
+┌─────────────────┐
+│     Order       │
+│  - OrderItems   │
+└────┬────────────┘
+     │
+     │ 6. Update inventory
+     │ 7. notify_observers()
+     ▼
+┌─────────────────┐
+│   Customer      │
+│  (Notified)     │
+└─────────────────┘
+```
+
+### 2. Order Processing Flow
+
+```
+┌──────────┐
+│   Staff  │
+└────┬─────┘
+     │
+     │ 1. process_order(order_id)
+     ▼
+┌─────────────────┐
+│RestrauntMgmtApp │
+└────┬────────────┘
+     │
+     │ 2. order_service.process_order()
+     ▼
+┌─────────────────┐
+│  OrderService   │
+└────┬────────────┘
+     │
+     │ 3. Create Command
+     ▼
+┌─────────────────┐
+│ PrepareOrder    │
+│    Command      │
+└────┬────────────┘
+     │
+     │ 4. execute()
+     │ 5. Update OrderItem states
+     ▼
+┌─────────────────┐
+│  OrderItems     │
+│  (Preparing)    │
+└────┬────────────┘
+     │
+     │ 6. notify_observers()
+     ▼
+┌─────────────────┐
+│   Observers     │
+│  (Notified)     │
+└─────────────────┘
+```
+
+### 3. Payment Processing Flow
+
+```
+┌──────────┐
+│ Customer │
+└────┬─────┘
+     │
+     │ 1. process_payment(order_id, strategy)
+     ▼
+┌─────────────────┐
+│RestrauntMgmtApp │
+└────┬────────────┘
+     │
+     │ 2. Calculate bill
+     │ 3. Apply decorators
+     ▼
+┌─────────────────┐
+│ Bill Decorators │
+│ - Tax           │
+│ - ServiceCharge │
+│ - Discount      │
+└────┬────────────┘
+     │
+     │ 4. Process payment
+     ▼
+┌─────────────────┐
+│ PaymentStrategy │
+│  (Strategy)     │
+└────┬────────────┘
+     │
+     │ 5. Execute payment
+     ▼
+┌─────────────────┐
+│  PaymentResult  │
+└─────────────────┘
+```
+
+### 4. Table Reservation Flow
+
+```
+┌──────────┐
+│ Customer │
+└────┬─────┘
+     │
+     │ 1. reserve_table(table_num, customer, size)
+     ▼
+┌─────────────────┐
+│RestrauntMgmtApp │
+└────┬────────────┘
+     │
+     │ 2. table_service.reserve_table()
+     ▼
+┌─────────────────┐
+│  TableService   │
+└────┬────────────┘
+     │
+     │ 3. Get table
+     │ 4. Check availability
+     │ 5. Change state
+     ▼
+┌─────────────────┐
+│     Table       │
+│  (Reserved)     │
+└────┬────────────┘
+     │
+     │ 6. notify_observers()
+     ▼
+┌─────────────────┐
+│   Observers     │
+│  (Notified)     │
+└─────────────────┘
+```
+
+## 📋 Entity Attributes Summary
+
+### Table Entity
+
+- `table_number`: Unique table identifier
+- `capacity`: Maximum number of people
+- `status`: TableStatus (AVAILABLE, RESERVED, OCCUPIED)
+- `state`: TableState object
+- `observers`: List of Observer objects
+
+### Order Entity
+
+- `order_id`: Unique order identifier
+- `table`: Reference to Table
+- `customer`: Reference to Customer
+- `items`: List of OrderItem objects
+- `total_amount`: Total order amount
+- `status`: OrderStatus
+- `observers`: List of Observer objects
+
+### OrderItem Entity
+
+- `id`: Unique identifier
+- `item`: Reference to Item
+- `quantity`: Quantity ordered
+- `status`: OrderItemStatus
+- `state`: OrderItemState object
+- `subtotal`: Item price × quantity
+
+### Item Entity
+
+- `id`: Unique identifier
+- `name`: Item name
+- `price`: Item price
+- `type`: ItemType (VEG, NON_VEG)
+
+### Customer Entity
+
+- `id`: Unique identifier
+- `name`: Customer name
+- Implements OrderObserver interface
+
+### Staff Entity
+
+- `id`: Unique identifier
+- `name`: Staff name
+- `role`: StaffRole (MANAGER, CHEF, WAITER)
+
+### Payment Entity
+
+- `amount`: Payment amount
+- `payment_method`: PaymentMethod (CASH, CREDIT_CARD, UPI)
+- `payment_status`: PaymentStatus (PENDING, COMPLETED, FAILED)
+- `payment_strategy`: PaymentStrategy object
+
+### Inventory Entity
+
+- `item`: Reference to Item
+- `quantity`: Available stock quantity
+
 ## 🎯 SOLID Principles Applied
 
 - **Single Responsibility**: Each class has one reason to change

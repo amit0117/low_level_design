@@ -88,6 +88,350 @@ This demo showcases:
 - Real-time state transitions
 - Graceful system shutdown
 
+## 📊 Entity Relationship Diagram
+
+### Core Entities and Relationships
+
+```
+┌─────────────────────────────────────┐
+│      ElevatorService                │
+│─────────────────────────────────────│
+│ (Singleton)                        │
+│ - scheduling_strategy               │
+│ - elevator_repository               │
+│ - floor_repository                  │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (manages)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│          Elevator                   │
+│─────────────────────────────────────│
+│ id                                  │
+│ capacity                            │
+│ state (ElevatorState)               │
+│ status (ElevatorStatus)             │
+│ direction (Direction)               │
+│ door_status (DoorStatus)            │
+│ current_floor_number                │
+│ up_requests (Set<Request>)          │
+│ down_requests (Set<Request>)        │
+│ display_panel (DisplayPanel)        │
+│ observers (List<Observer>)          │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (has)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│           Request                   │
+│─────────────────────────────────────│
+│ target_floor_number                 │
+│ direction (Direction)               │
+│ type (RequestType)                  │
+│                                     │
+│ (EXTERNAL: floor button)            │
+│ (INTERNAL: destination selection)   │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│            Floor                    │
+│─────────────────────────────────────│
+│ floor_number                        │
+│ display_panel (DisplayPanel)        │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│        DisplayPanel                 │
+│─────────────────────────────────────│
+│ name                                │
+│ (Observer for Elevator updates)     │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│        ElevatorState                │
+│─────────────────────────────────────│
+│ (Abstract)                          │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┬──────────────┬──────────────┐
+       ▼              ▼              ▼              ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌──────────────┐
+│ IdleState   │ │ MovingUp    │ │ MovingDown  │ │ InMaintenance│
+│             │ │   State     │ │   State     │ │   State      │
+└─────────────┘ └─────────────┘ └─────────────┘ └──────────────┘
+
+┌─────────────────────────────────────┐
+│  ElevatorSchedulingStrategy         │
+│─────────────────────────────────────│
+│ (Abstract)                          │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┬──────────────┬
+       ▼              ▼              ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│    SCAN     │ │    FCFS     │ │    SSTF     │
+│  (Elevator  │ │ (First Come │ │ (Shortest   │
+│  Algorithm) │ │ First Serve)│ │ Seek Time)  │
+└─────────────┘ └─────────────┘ └─────────────┘
+```
+
+### Entity Relationships
+
+1. **ElevatorService ↔ Elevator** (One-to-Many)
+
+   - ElevatorService manages multiple Elevators
+   - Elevators stored in ElevatorRepository
+
+2. **ElevatorService ↔ Floor** (One-to-Many)
+
+   - ElevatorService manages multiple Floors
+   - Floors stored in FloorRepository
+
+3. **Elevator ↔ Request** (One-to-Many)
+
+   - An Elevator can have multiple Requests
+   - Requests stored in up_requests and down_requests sets
+   - Each Request targets one floor
+
+4. **Elevator ↔ ElevatorState** (One-to-One)
+
+   - Each Elevator has one current State
+   - State transitions: Idle → MovingUp → Idle → MovingDown → Idle
+
+5. **Elevator ↔ DisplayPanel** (One-to-One)
+
+   - Each Elevator has one DisplayPanel
+   - DisplayPanel shows elevator status
+
+6. **Floor ↔ DisplayPanel** (One-to-One)
+
+   - Each Floor has one DisplayPanel
+   - DisplayPanel shows elevator arrivals
+
+7. **Elevator ↔ DisplayPanel (Observer Pattern)**
+
+   - Elevator implements `BaseSubject`
+   - DisplayPanels (both elevator and floor) implement `BaseObserver`
+   - Elevator notifies all DisplayPanels on status changes
+
+8. **ElevatorService ↔ ElevatorSchedulingStrategy** (One-to-One)
+
+   - ElevatorService uses one SchedulingStrategy
+   - Strategy selects which elevator handles a request
+
+9. **ElevatorState Inheritance Hierarchy**
+
+   - `ElevatorState` (abstract base)
+   - `IdleState`, `MovingUpState`, `MovingDownState`, `InMaintenanceState` (concrete states)
+
+10. **ElevatorSchedulingStrategy Inheritance Hierarchy**
+
+    - `ElevatorSchedulingStrategy` (abstract base)
+    - `SCAN`, `FCFS`, `SSTF` (concrete strategies)
+
+11. **Repository Pattern Relationships**
+    - `ElevatorRepository` manages all Elevators (Singleton)
+    - `FloorRepository` manages all Floors (Singleton)
+
+## 🔄 Data Flow Diagrams
+
+### 1. External Request Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. Press floor button
+     ▼
+┌─────────────────┐
+│     Floor       │
+└────┬────────────┘
+     │
+     │ 2. create_external_request()
+     ▼
+┌─────────────────┐
+│ ElevatorService │
+└────┬────────────┘
+     │
+     │ 3. Select elevator
+     │    (using strategy)
+     ▼
+┌──────────────────┐
+│SchedulingStrategy│
+└────┬─────────────┘
+     │
+     │ 4. Add request to elevator
+     ▼
+┌─────────────────┐
+│   Elevator      │
+└────┬────────────┘
+     │
+     │ 5. Notify thread
+     │    (Condition variable)
+     ▼
+┌─────────────────┐
+│ Elevator Thread │
+│ (Processes)     │
+└─────────────────┘
+```
+
+### 2. Internal Request Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. Select destination
+     │    inside elevator
+     ▼
+┌─────────────────┐
+│   Elevator      │
+└────┬────────────┘
+     │
+     │ 2. create_internal_request()
+     ▼
+┌─────────────────┐
+│   Elevator      │
+│ (Adds to        │
+│  up/down set)   │
+└────┬────────────┘
+     │
+     │ 3. Notify thread
+     ▼
+┌─────────────────┐
+│ Elevator Thread │
+│ (Processes)     │
+└─────────────────┘
+```
+
+### 3. Elevator Movement Flow
+
+```
+┌─────────────────┐
+│ Elevator Thread │
+└────┬────────────┘
+     │
+     │ 1. Check requests
+     │ 2. Determine direction
+     ▼
+┌─────────────────┐
+│  ElevatorState  │
+└────┬────────────┘
+     │
+     │ 3. Transition state
+     │    (Idle → MovingUp/Down)
+     ▼
+┌─────────────────┐
+│   Elevator      │
+└────┬────────────┘
+     │
+     │ 4. Move floor by floor
+     │ 5. Check if target reached
+     ▼
+┌─────────────────┐
+│     Request     │
+│   (Completed)   │
+└────┬────────────┘
+     │
+     │ 6. Remove request
+     │ 7. Notify observers
+     ▼
+┌─────────────────┐
+│ DisplayPanels   │
+│ (Updated)       │
+└─────────────────┘
+```
+
+### 4. Complete System Interaction Flow
+
+```
+┌──────────────┐
+│   Client     │
+│  (demo.py)   │
+└──────┬───────┘
+       │
+       │ All Operations
+       ▼
+┌─────────────────────────────────────┐
+│      ElevatorService                │
+│      (Singleton)                    │
+│  - Request Management               │
+│  - Elevator Management              │
+│  - Strategy Delegation              │
+└──────┬──────────────────────────────┘
+       │
+       ├──────────────────┬──────────────────┐
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│ Elevator    │  │   Floor     │  │ Scheduling  │
+│ Repository  │  │ Repository  │  │  Strategy   │
+│             │  │             │  │             │
+└─────────────┘  └─────────────┘  └─────────────┘
+       │                  │                  │
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│ Elevators   │  │   Floors    │  │   SCAN/     │
+│             │  │             │  │  FCFS/SSTF  │
+└─────────────┘  └─────────────┘  └─────────────┘
+       │                  │
+       │                  │
+       ▼                  ▼
+┌─────────────┐  ┌─────────────┐
+│  Requests   │  │ DisplayPanel│
+│             │  │  (Observer) │
+└─────────────┘  └─────────────┘
+       │
+       │
+       ▼
+┌──────────────┐
+│ ElevatorState│
+│  (State      │
+│   Pattern)   │
+└──────────────┘
+```
+
+## 📋 Entity Attributes Summary
+
+### Elevator Entity
+
+- `id`: Unique identifier (UUID)
+- `capacity`: Maximum weight capacity
+- `state`: Current ElevatorState object
+- `status`: Current ElevatorStatus (IDLE, MOVING_UP, MOVING_DOWN, IN_MAINTENANCE)
+- `direction`: Current Direction (UP, DOWN, IDLE)
+- `door_status`: DoorStatus (OPEN, CLOSED)
+- `current_floor_number`: Current floor position
+- `up_requests`: Set of Requests going up
+- `down_requests`: Set of Requests going down
+- `display_panel`: DisplayPanel for showing status
+- `observers`: List of Observer objects
+
+### Request Entity
+
+- `target_floor_number`: Destination floor
+- `direction`: Direction (UP, DOWN)
+- `type`: RequestType (EXTERNAL, INTERNAL)
+
+### Floor Entity
+
+- `floor_number`: Floor number
+- `display_panel`: DisplayPanel for showing elevator status
+
+### DisplayPanel Entity
+
+- `name`: Panel identifier
+- Implements Observer interface
+
 ## 📊 System Behavior
 
 ### State Transitions

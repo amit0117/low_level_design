@@ -138,6 +138,155 @@ The demo includes two main sections:
 - **Payment Processing**: Multiple payment methods with strategy pattern
 - **Error Handling**: Comprehensive validation and error management
 
+## 📊 Entity Relationship Diagram
+
+### Core Entities and Relationships
+
+```
+┌─────────────────────────────────────┐
+│      LibraryManagement              │
+│─────────────────────────────────────│
+│ (Singleton)                         │
+│ - borrow_repository                 │
+│ - item_repository                   │
+│ - member_repository                 │
+│ - payment_service                   │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (manages)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│         LibraryItem                 │
+│─────────────────────────────────────│
+│ id                                  │
+│ title                               │
+│ author                              │
+│ type (ItemType)                     │
+│ status (ItemStatus)                 │
+│ state (ItemState)                   │
+│ observers (List<Observer>)          │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┬──────────────┐
+       ▼              ▼              ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│    Book     │ │  Magazine   │ │   Other     │
+│  - isbn     │ │  - issue_no │ │   Items     │
+└─────────────┘ └─────────────┘ └─────────────┘
+
+┌─────────────────────────────────────┐
+│            Member                   │
+│─────────────────────────────────────│
+│ id                                  │
+│ name                                │
+│ borrow_history (List<Borrow>)       │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (has)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│            Borrow                   │
+│─────────────────────────────────────│
+│ id                                  │
+│ member (Member)                     │
+│ item (LibraryItem)                  │
+│ borrow_date                         │
+│ due_date                            │
+│ return_date                         │
+│ status (BorrowStatus)               │
+│ fine_amount                         │
+│ renewal_count                       │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│        ItemState                    │
+│─────────────────────────────────────│
+│ (Abstract)                          │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┬──────────────┬──────────────┬──────────────┐
+       ▼              ▼              ▼              ▼              ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│ Available   │ │  Reserved   │ │   Issued    │ │  Damaged    │ │    Lost     │
+│   State     │ │   State     │ │   State     │ │   State     │ │   State     │
+└─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
+
+┌─────────────────────────────────────┐
+│      PaymentResult                  │
+│─────────────────────────────────────│
+│ amount                              │
+│ payment_method (PaymentMethod)      │
+│ payment_status (PaymentStatus)      │
+└─────────────────────────────────────┘
+```
+
+### Entity Relationships
+
+1. **LibraryManagement ↔ LibraryItem** (One-to-Many via Repository)
+
+   - LibraryManagement manages multiple LibraryItems
+   - Items stored in ItemRepository
+
+2. **LibraryManagement ↔ Member** (One-to-Many via Repository)
+
+   - LibraryManagement manages multiple Members
+   - Members stored in MemberRepository
+
+3. **LibraryManagement ↔ Borrow** (One-to-Many via Repository)
+
+   - LibraryManagement manages multiple Borrow records
+   - Borrows stored in BorrowRepository
+
+4. **Member ↔ Borrow** (One-to-Many)
+
+   - A Member can have multiple Borrow records
+   - Each Borrow belongs to one Member
+   - Member maintains borrow_history
+
+5. **LibraryItem ↔ Borrow** (One-to-Many)
+
+   - A LibraryItem can have multiple Borrow records (over time)
+   - Each Borrow references one LibraryItem
+   - Only one active Borrow per item at a time
+
+6. **LibraryItem Inheritance Hierarchy**
+
+   - `LibraryItem` (base class)
+   - `Book`, `Magazine`, and other item types (subclasses)
+   - Each type has specific attributes (ISBN for books, issue_no for magazines)
+
+7. **LibraryItem ↔ ItemState** (One-to-One)
+
+   - Each LibraryItem has one current State
+   - State transitions: Available → Reserved → Issued → Available/Damaged/Lost
+
+8. **LibraryItem ↔ Member (Observer Pattern)**
+
+   - LibraryItem implements `ItemSubject`
+   - Member implements `ItemObserver`
+   - Members are notified when item status changes
+
+9. **Borrow ↔ PaymentResult** (One-to-One, Optional)
+
+   - A Borrow can have one PaymentResult (for fines)
+   - PaymentResult created when fine is paid
+
+10. **Strategy Pattern Relationships**
+
+    - PaymentService uses `PaymentStrategy` (delegates payment processing)
+    - SearchService uses `ItemSearchStrategy` (delegates search algorithms)
+
+11. **Repository Pattern Relationships**
+    - `ItemRepository` manages all LibraryItems (Singleton)
+    - `MemberRepository` manages all Members (Singleton)
+    - `BorrowRepository` manages all Borrow records (Singleton)
+
 ## 🔄 Data Flow
 
 ### System Architecture Overview

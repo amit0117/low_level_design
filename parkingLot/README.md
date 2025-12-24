@@ -26,15 +26,15 @@ A comprehensive Parking Lot Management System implementation demonstrating vario
 
 ### Domain Entities
 
-| Domain Area        | Key Entities                                                                                       |
-| ----------------- | ------------------------------------------------------------------------------------------------- |
-| **Parking System** | `ParkingLot`, `Floor`, `ParkingSpot`, `Gate` (EntryGate, ExitGate)                                |
-| **Vehicles**       | `Vehicle`, `Car`, `Motorcycle`, `Truck`                                                           |
-| **Transactions**  | `Ticket`, `PaymentResponse`                                                                       |
+| Domain Area        | Key Entities                                                                                                                                                                     |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Parking System** | `ParkingLot`, `Floor`, `ParkingSpot`, `Gate` (EntryGate, ExitGate)                                                                                                               |
+| **Vehicles**       | `Vehicle`, `Car`, `Motorcycle`, `Truck`                                                                                                                                          |
+| **Transactions**   | `Ticket`, `PaymentResponse`                                                                                                                                                      |
 | **Strategies**     | `ParkingSpotAssignmentStrategy`, `RandomSpotAssignmentStrategy`, `PaymentStrategy`, `CashPaymentStrategy`, `PricingStrategy`, `FlatRatePricingStrategy`, `HourlyPricingStrategy` |
-| **Repositories**   | `TicketRepository`, `GateRepository`                                                               |
-| **Concurrency**   | `LockManager` (hybrid lock management for parking spots)                                           |
-| **Enums**          | `VehicleType`, `ParkingSpotStatus`, `PaymentStatus`, `PaymentMethod`, `ParkingTicketStatus`, `GateType` |
+| **Repositories**   | `TicketRepository`, `GateRepository`                                                                                                                                             |
+| **Concurrency**    | `LockManager` (hybrid lock management for parking spots)                                                                                                                         |
+| **Enums**          | `VehicleType`, `ParkingSpotStatus`, `PaymentStatus`, `PaymentMethod`, `ParkingTicketStatus`, `GateType`                                                                          |
 
 ### Core Entities Overview
 
@@ -207,6 +207,158 @@ The demo includes the following test scenarios:
 - **Error Handling**: Proper handling when spots are unavailable
 - **Multiple Gates**: Entry and exit through different gates
 
+## 📊 Entity Relationship Diagram
+
+### Core Entities and Relationships
+
+```
+┌─────────────────────────────────────┐
+│          ParkingLot                 │
+│─────────────────────────────────────│
+│ id                                  │
+│ floors (List<Floor>)                │
+│ entry_gates (List<EntryGate>)       │
+│ exit_gates (List<ExitGate>)         │
+│ spot_assignment_strategy            │
+│ payment_strategy                    │
+│ pricing_strategy                    │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (contains)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│            Floor                    │
+│─────────────────────────────────────│
+│ floor_number                        │
+│ parking_spots (List<ParkingSpot>)   │
+│ lock_manager (LockManager)          │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (contains)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│         ParkingSpot                 │
+│─────────────────────────────────────│
+│ spot_number                         │
+│ vehicle_type (VehicleType)          │
+│ status (ParkingSpotStatus)          │
+│ vehicle (Vehicle)                   │
+└──────┬──────────────────────────────┘
+       │
+       │ 0..1 (parked in)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│           Vehicle                   │
+│─────────────────────────────────────│
+│ license_plate                       │
+│ vehicle_type (VehicleType)          │
+└─────────────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┬──────────────┐
+       ▼              ▼              ▼
+┌──────────┐  ┌──────────┐  ┌──────────┐
+│   Car    │  │Motorcycle│  │  Truck   │
+└──────────┘  └──────────┘  └──────────┘
+
+┌─────────────────────────────────────┐
+│            Ticket                   │
+│─────────────────────────────────────│
+│ ticket_id                           │
+│ vehicle (Vehicle)                   │
+│ parking_spot (ParkingSpot)          │
+│ status (ParkingTicketStatus)        │
+│ start_time                          │
+│ end_time                            │
+│ entry_gate_number                   │
+│ exit_gate_number                    │
+│ floor_number                        │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│             Gate                    │
+│─────────────────────────────────────│
+│ gate_number                         │
+│ gate_type (GateType)                │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┐
+       ▼              ▼
+┌─────────────┐  ┌─────────────┐
+│ EntryGate   │  │  ExitGate   │
+└─────────────┘  └─────────────┘
+
+┌─────────────────────────────────────┐
+│      PaymentResponse                │
+│─────────────────────────────────────│
+│ amount                              │
+│ payment_method (PaymentMethod)      │
+│ payment_status (PaymentStatus)      │
+└─────────────────────────────────────┘
+```
+
+### Entity Relationships
+
+1. **ParkingLot ↔ Floor** (One-to-Many)
+
+   - A ParkingLot has multiple Floors
+   - Each Floor belongs to one ParkingLot
+
+2. **Floor ↔ ParkingSpot** (One-to-Many)
+
+   - A Floor has multiple ParkingSpots
+   - Each ParkingSpot belongs to one Floor
+
+3. **ParkingSpot ↔ Vehicle** (One-to-One, Optional)
+
+   - A ParkingSpot can have one Vehicle parked (when OCCUPIED)
+   - A Vehicle can be parked in one ParkingSpot
+   - Relationship is optional (spot can be AVAILABLE)
+
+4. **Vehicle Inheritance Hierarchy**
+
+   - `Vehicle` (base class)
+   - `Car`, `Motorcycle`, `Truck` (subclasses)
+   - Each vehicle type has specific parking requirements
+
+5. **Ticket ↔ Vehicle** (One-to-One)
+
+   - A Ticket is created for one Vehicle
+   - A Vehicle can have one active Ticket
+
+6. **Ticket ↔ ParkingSpot** (One-to-One)
+
+   - A Ticket references one ParkingSpot
+   - A ParkingSpot can be referenced by one active Ticket
+
+7. **Ticket ↔ Gate** (Many-to-One)
+
+   - A Ticket has one entry_gate_number
+   - A Ticket has one exit_gate_number
+   - Multiple Tickets can use the same Gate
+
+8. **Gate Inheritance Hierarchy**
+
+   - `Gate` (base class)
+   - `EntryGate`, `ExitGate` (subclasses)
+   - Different processing logic for entry vs exit
+
+9. **Strategy Pattern Relationships**
+
+   - ParkingLot uses `ParkingSpotAssignmentStrategy` (delegates spot selection)
+   - ParkingLot uses `PaymentStrategy` (delegates payment processing)
+   - ParkingLot uses `PricingStrategy` (delegates price calculation)
+
+10. **Repository Pattern Relationships**
+    - `TicketRepository` manages all Tickets (Singleton)
+    - `GateRepository` manages all Gates (Singleton)
+
 ## 🔄 Data Flow
 
 ### System Architecture Overview
@@ -364,10 +516,12 @@ class ParkingLot:
 The system uses Strategy pattern for three key algorithms:
 
 1. **ParkingSpotAssignmentStrategy**: How to assign spots
+
    - `RandomSpotAssignmentStrategy`: Random assignment
    - Can extend: NearestSpotAssignmentStrategy, FirstComeFirstServeStrategy, ZoneBasedStrategy
 
 2. **PaymentStrategy**: How to process payments
+
    - `CashPaymentStrategy`: Cash payment
    - Can extend: CreditCardPaymentStrategy, DebitCardPaymentStrategy, UPIPaymentStrategy
 
@@ -432,12 +586,14 @@ class TicketRepository:
 Gates follow a consistent processing flow:
 
 **EntryGate Template**:
+
 1. Allocate parking spot
 2. Create ticket
 3. Park vehicle
 4. Return ticket
 
 **ExitGate Template**:
+
 1. Get ticket
 2. Calculate price
 3. Process payment

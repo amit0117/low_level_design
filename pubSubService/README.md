@@ -39,6 +39,435 @@ app/
     └── message_observer.py # Subject/Observer base classes
 ```
 
+## 📊 Entity Relationship Diagram
+
+### Core Entities and Relationships
+
+```
+┌─────────────────────────────────────┐
+│         PubSubApp                   │
+│─────────────────────────────────────│
+│ - broker (Broker)                   │
+│ - topic_repo (TopicRepository)      │
+└──────┬──────────────────────────────┘
+       │
+       │ 1 (has)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│            Broker                   │
+│─────────────────────────────────────│
+│ broker_id                           │
+│ name                                │
+│ queues (Dict<Topic, MessageQueue>)  │
+│ routing_strategy                    │
+│ consumption_strategy                │
+│ delivery_strategy                   │
+│ retry_strategy                      │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (manages)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│            Topic                    │
+│─────────────────────────────────────│
+│ id                                  │
+│ name                                │
+│ observers (List<Subscriber>)        │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (subscribed by)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│        Subscriber                   │
+│─────────────────────────────────────│
+│ subscriber_id                       │
+│ name                                │
+│ subscribed_topics (List<Topic>)     │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│         Publisher                   │
+│─────────────────────────────────────│
+│ publisher_id                        │
+│ broker (Broker)                     │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (publishes)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│          Message                    │
+│─────────────────────────────────────│
+│ id                                  │
+│ topic (Topic)                       │
+│ payload                             │
+│ timestamp                           │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│        MessageQueue                 │
+│─────────────────────────────────────│
+│ messages (List<Message>)            │
+│ persistence_strategy                │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│   MessageRoutingStrategy            │
+│─────────────────────────────────────│
+│ (Abstract)                          │
+└──────┬─────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┐
+       ▼              ▼
+┌─────────────┐ ┌─────────────┐
+│  Broadcast  │ │ RoundRobin  │
+│  Routing    │ │  Routing    │
+└─────────────┘ └─────────────┘
+
+┌─────────────────────────────────────┐
+│ MessageConsumptionStrategy          │
+│─────────────────────────────────────│
+│ (Abstract)                          │
+└──────┬─────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┐
+       ▼              ▼
+┌─────────────┐ ┌─────────────┐
+│  PushModel  │ │  PullModel  │
+└─────────────┘ └─────────────┘
+
+┌─────────────────────────────────────┐
+│  MessageDeliveryStrategy            │
+│─────────────────────────────────────│
+│ (Abstract)                          │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┐
+       ▼              ▼
+┌─────────────┐ ┌─────────────┐
+│ AtMostOnce  │ │AtLeastOnce  │
+└─────────────┘ └─────────────┘
+```
+
+### Entity Relationships
+
+1. **PubSubApp ↔ Broker** (One-to-One)
+
+   - PubSubApp has one Broker
+   - Broker is created via Factory with specific configuration
+
+2. **Broker ↔ Topic** (One-to-Many)
+
+   - A Broker manages multiple Topics
+   - Topics stored in a dictionary with associated MessageQueues
+
+3. **Topic ↔ MessageQueue** (One-to-One)
+
+   - Each Topic has one MessageQueue
+   - MessageQueue stores messages for the topic
+
+4. **Topic ↔ Subscriber** (Many-to-Many)
+
+   - A Topic can have multiple Subscribers
+   - A Subscriber can subscribe to multiple Topics
+   - Topic implements `MessageSubject` (Observer pattern)
+
+5. **Publisher ↔ Broker** (Many-to-One)
+
+   - Multiple Publishers can use one Broker
+   - Each Publisher references one Broker
+
+6. **Publisher ↔ Message** (One-to-Many)
+
+   - A Publisher can publish multiple Messages
+   - Each Message is published by one Publisher
+
+7. **Message ↔ Topic** (Many-to-One)
+
+   - A Message belongs to one Topic
+   - A Topic can have multiple Messages
+
+8. **Message ↔ MessageQueue** (One-to-Many)
+
+   - Messages are stored in MessageQueues
+   - MessageQueue contains multiple Messages
+
+9. **Subscriber ↔ Message** (Many-to-Many)
+
+   - A Subscriber can receive multiple Messages
+   - A Message can be delivered to multiple Subscribers (Broadcast) or one Subscriber (RoundRobin)
+
+10. **Broker ↔ Strategy Objects** (One-to-One each)
+
+    - Broker uses one `MessageRoutingStrategy`
+    - Broker uses one `MessageConsumptionStrategy`
+    - Broker uses one `MessageDeliveryStrategy`
+    - Broker uses one `MessagePersistenceStrategy`
+    - Broker uses one `MessageRetryStrategy`
+
+11. **Strategy Pattern Inheritance Hierarchies**
+
+    - `MessageRoutingStrategy`: BroadcastRouting, RoundRobinRouting
+    - `MessageConsumptionStrategy`: PushModel, PullModel
+    - `MessageDeliveryStrategy`: AtMostOnceDelivery, AtLeastOnceDelivery
+    - `MessagePersistenceStrategy`: InMemoryPersistence, FilePersistence
+    - `MessageRetryStrategy`: FixedIntervalRetry, ExponentialBackoffRetry, JitterRetry
+
+12. **Observer Pattern Relationships**
+
+    - Topic implements `MessageSubject`
+    - Subscriber implements `MessageObserver`
+    - Topics notify subscribers about new messages
+
+13. **Repository Pattern Relationships**
+    - `TopicRepository` manages all Topics (Singleton)
+    - `SubscriberRepository` manages all Subscribers (Singleton)
+
+## 🔄 Data Flow Diagrams
+
+### 1. Message Publishing Flow
+
+```
+┌──────────┐
+│Publisher │
+└────┬─────┘
+     │
+     │ 1. publish(topic_name, payload)
+     ▼
+┌─────────────────┐
+│     Broker      │
+└────┬────────────┘
+     │
+     │ 2. Get topic
+     │ 3. Create Message
+     ▼
+┌─────────────────┐
+│    Message      │
+└────┬────────────┘
+     │
+     │ 4. Add to topic queue
+     ▼
+┌─────────────────┐
+│  MessageQueue   │
+│  (per Topic)    │
+└────┬────────────┘
+     │
+     │ 5. Persist (if configured)
+     │ 6. Route to subscribers
+     ▼
+┌─────────────────┐
+│ RoutingStrategy │
+└────┬────────────┘
+     │
+     │ 7. Determine subscribers
+     │ 8. Deliver messages
+     ▼
+┌─────────────────┐
+│  Subscribers    │
+└─────────────────┘
+```
+
+### 2. Message Consumption Flow (Push Model)
+
+```
+┌─────────────────┐
+│     Broker      │
+└────┬────────────┘
+     │
+     │ 1. New message in queue
+     │ 2. Get consumption strategy
+     ▼
+┌───────────────────┐
+│ConsumptionStrategy│
+│   (Push)          │
+└────┬──────────────┘
+     │
+     │ 3. Get delivery strategy
+     ▼
+┌─────────────────┐
+│DeliveryStrategy │
+└────┬────────────┘
+     │
+     │ 4. Push to subscribers
+     │ 5. Handle retry if needed
+     ▼
+┌─────────────────┐
+│  Subscribers    │
+│  (Receive)      │
+└────┬────────────┘
+     │
+     │ 6. Acknowledge (if AtLeastOnce)
+     ▼
+┌─────────────────┐
+│   Broker        │
+│  (Acknowledged) │
+└─────────────────┘
+```
+
+### 3. Message Consumption Flow (Pull Model)
+
+```
+┌──────────┐
+│Subscriber│
+└────┬─────┘
+     │
+     │ 1. pull_messages(topic_name)
+     ▼
+┌─────────────────┐
+│     Broker      │
+└────┬────────────┘
+     │
+     │ 2. Get consumption strategy
+     ▼
+┌───────────────────┐
+│ConsumptionStrategy│
+│   (Pull)          │
+└────┬──────────────┘
+     │
+     │ 3. Get messages from queue
+     │ 4. Apply delivery strategy
+     ▼
+┌─────────────────┐
+│    Messages     │
+└────┬────────────┘
+     │
+     │ 5. Return to subscriber
+     ▼
+┌─────────────────┐
+│  Subscriber     │
+│  (Receives)     │
+└─────────────────┘
+```
+
+### 4. Subscription Flow
+
+```
+┌──────────┐
+│Subscriber│
+└────┬─────┘
+     │
+     │ 1. subscribe(topic_name, subscriber)
+     ▼
+┌─────────────────┐
+│   PubSubApp     │
+└────┬────────────┘
+     │
+     │ 2. Get topic from repository
+     ▼
+┌─────────────────┐
+│ TopicRepository │
+└────┬────────────┘
+     │
+     │ 3. topic.add_observer(subscriber)
+     ▼
+┌─────────────────┐
+│     Topic       │
+└────┬────────────┘
+     │
+     │ 4. Add subscriber to observers
+     │ 5. subscriber.subscribe_to_topic()
+     ▼
+┌─────────────────┐
+│   Subscriber    │
+│  (Subscribed)   │
+└─────────────────┘
+```
+
+### 5. Complete System Interaction Flow
+
+```
+┌──────────────┐
+│   Client     │
+│  (demo.py)   │
+└──────┬───────┘
+       │
+       │ All Operations
+       ▼
+┌─────────────────────────────────────┐
+│         PubSubApp                   │
+│         (Facade)                    │
+│  - Topic Management                 │
+│  - Subscription Management          │
+│  - Publishing                       │
+└──────┬──────────────────────────────┘
+       │
+       ├──────────────────┬──────────────────┐
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   Broker    │  │   Topic     │  │ Subscriber  │
+│             │  │ Repository  │  │ Repository  │
+└─────────────┘  └─────────────┘  └─────────────┘
+       │                  │                  │
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   Topics    │  │  Topics     │  │ Subscribers │
+│   & Queues  │  │  (Stored)   │  │  (Stored)   │
+└─────────────┘  └─────────────┘  └─────────────┘
+       │
+       │
+       ▼
+┌─────────────────────────────────────┐
+│         Strategy Layer              │
+│  - Routing Strategies               │
+│  - Consumption Strategies           │
+│  - Delivery Strategies              │
+│  - Persistence Strategies           │
+│  - Retry Strategies                 │
+└─────────────────────────────────────┘
+```
+
+## 📋 Entity Attributes Summary
+
+### Broker Entity
+
+- `broker_id`: Unique identifier (UUID)
+- `name`: Broker name
+- `queues`: Dictionary mapping Topic to MessageQueue
+- `routing_strategy`: MessageRoutingStrategy object
+- `consumption_strategy`: MessageConsumptionStrategy object
+- `delivery_strategy`: MessageDeliveryStrategy object
+- `retry_strategy`: MessageRetryStrategy object
+
+### Topic Entity
+
+- `id`: Unique identifier (UUID)
+- `name`: Topic name
+- `observers`: List of Subscriber objects (Observer pattern)
+
+### Subscriber Entity
+
+- `subscriber_id`: Unique identifier (UUID)
+- `name`: Subscriber name
+- `subscribed_topics`: List of Topic objects
+
+### Publisher Entity
+
+- `publisher_id`: Unique identifier (UUID)
+- `broker`: Reference to Broker
+
+### Message Entity
+
+- `id`: Unique identifier (UUID)
+- `topic`: Reference to Topic
+- `payload`: Message content
+- `timestamp`: Message creation timestamp
+
+### MessageQueue Entity
+
+- `messages`: List of Message objects
+- `persistence_strategy`: MessagePersistenceStrategy object
+
 ## 🔄 Data Flow Architecture
 
 ```

@@ -132,6 +132,435 @@ The demo includes comprehensive sections:
 - **Dynamic Pricing**: Decorator pattern for flexible price calculation
 - **Error Handling**: Comprehensive validation and error management
 
+## 📊 Entity Relationship Diagram
+
+### Core Entities and Relationships
+
+```
+┌─────────────────────────────────────┐
+│    AirlineManagementFacade          │
+│─────────────────────────────────────│
+│ (Singleton/Facade)                  │
+│ - user_repository                   │
+│ - flight_repository                 │
+│ - booking_repository                │
+│ - booking_service                   │
+│ - payment_service                   │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (manages)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│            User                     │
+│─────────────────────────────────────│
+│ id                                  │
+│ name                                │
+│ email                               │
+│ bookings (List<Booking>)            │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┬──────────────┐
+       ▼              ▼              ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│  Passenger  │ │   Staff     │ │    Admin    │
+│  - type     │ │  - type     │ │             │
+└─────────────┘ └─────────────┘ └─────────────┘
+
+┌─────────────────────────────────────┐
+│            Flight                   │
+│─────────────────────────────────────│
+│ flight_number                       │
+│ aircraft (Aircraft)                 │
+│ source                              │
+│ destination                         │
+│ departure_time                      │
+│ arrival_time                        │
+│ seats (Dict<Int, Seat>)             │
+│ status (FlightStatus)               │
+│ observers (List<Observer>)          │
+└──────┬──────────────────────────────┘
+       │
+       │ 1 (has)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│          Aircraft                │
+│──────────────────────────────────│
+│ tail_number                         │
+│ model                               │
+│ total_seats                         │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│            Seat                     │
+│───────────────────────────────────│
+│ seat_number                         │
+│ seat_type (SeatType)                │
+│ status (SeatStatus)                 │
+│ state (SeatState)                   │
+│ price                               │
+│ lock (Lock)                         │
+└──────┬─────────────────────────────┘
+       │
+       │ 1..* (booked in)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│          Booking                    │
+│─────────────────────────────────────│
+│ id                                  │
+│ passenger (Passenger)               │
+│ flight (Flight)                     │
+│ seats (List<Seat>)                  │
+│ payment_result (PaymentResult)      │
+│ status (BookingStatus)              │
+│ price                               │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│       PaymentResult                 │
+│─────────────────────────────────────│
+│ amount                              │
+│ payment_method (PaymentMethod)      │
+│ payment_status (PaymentStatus)      │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│        SeatState                    │
+│─────────────────────────────────────│
+│ (Abstract)                          │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┬──────────────┬──────────────┐
+       ▼              ▼              ▼              ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│ Available   │ │   Locked    │ │  Reserved   │ │  Occupied   │
+│   State     │ │   State     │ │   State     │ │   State     │
+└─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
+```
+
+### Entity Relationships
+
+1. **AirlineManagementFacade ↔ User** (One-to-Many via Repository)
+
+   - Facade manages multiple Users
+   - Users stored in UserRepository
+
+2. **User Inheritance Hierarchy**
+
+   - `User` (base class)
+   - `Passenger`, `Staff`, `Admin` (subclasses)
+   - Each type has specific attributes
+
+3. **User ↔ Booking** (One-to-Many)
+
+   - A User can have multiple Bookings
+   - Each Booking belongs to one User (passenger)
+
+4. **Flight ↔ Aircraft** (Many-to-One)
+
+   - A Flight uses one Aircraft
+   - An Aircraft can be used by multiple Flights (over time)
+
+5. **Flight ↔ Seat** (One-to-Many)
+
+   - A Flight has multiple Seats
+   - Each Seat belongs to one Flight
+
+6. **Booking ↔ Flight** (Many-to-One)
+
+   - A Booking is for one Flight
+   - A Flight can have multiple Bookings
+
+7. **Booking ↔ Seat** (One-to-Many)
+
+   - A Booking can include multiple Seats
+   - Each Seat can be in one active Booking
+
+8. **Booking ↔ PaymentResult** (One-to-One)
+
+   - A Booking has one PaymentResult
+   - PaymentResult created when payment is processed
+
+9. **Seat ↔ SeatState** (One-to-One)
+
+   - Each Seat has one current State
+   - State transitions: Available → Locked → Reserved → Occupied
+
+10. **Observer Pattern Relationships**
+
+    - Flight implements `FlightSubject` - notifies on status changes
+    - Booking implements `BookingSubject` - notifies on status changes
+    - User implements `FlightObserver` and `BookingObserver` - receives notifications
+
+11. **Strategy Pattern Relationships**
+
+    - PaymentService uses `PaymentStrategy` (delegates payment processing)
+    - Supports multiple payment methods
+
+12. **Decorator Pattern Relationships**
+    - Price calculation uses decorators: TaxDecorator, ServiceChargeDecorator, DiscountDecorator
+    - Decorators wrap base price calculation
+
+## 🔄 Data Flow Diagrams
+
+### 1. Flight Creation Flow
+
+```
+┌──────────┐
+│  Admin   │
+└────┬─────┘
+     │
+     │ 1. create_flight()
+     ▼
+┌─────────────────┐
+│AirlineManagement│
+└────┬────────────┘
+     │
+     │ 2. Create Flight
+     │ 3. Assign Aircraft
+     │ 4. Allocate Seats
+     ▼
+┌─────────────────┐
+│     Flight      │
+│  - Aircraft     │
+│  - Seats        │
+└────┬────────────┘
+     │
+     │ 5. Store in repository
+     ▼
+┌─────────────────┐
+│ FlightRepository│
+└─────────────────┘
+```
+
+### 2. Seat Booking Flow
+
+```
+┌──────────┐
+│Passenger │
+└────┬─────┘
+     │
+     │ 1. search_flights()
+     │ 2. select_seats()
+     │ 3. book_seats()
+     ▼
+┌─────────────────┐
+│AirlineManagement│
+└────┬────────────┘
+     │
+     │ 4. booking_service.book_seats()
+     ▼
+┌─────────────────┐
+│ BookingService  │
+└────┬────────────┘
+     │
+     │ 5. Lock seats
+     ▼
+┌─────────────────┐
+│ SeatLockManager │
+└────┬────────────┘
+     │
+     │ 6. Process payment
+     ▼
+┌─────────────────┐
+│ PaymentService  │
+└────┬────────────┘
+     │
+     │ 7. Create Booking
+     │ 8. Update seat states
+     ▼
+┌─────────────────┐
+│    Booking      │
+│  - Seats        │
+│  - Payment      │
+└────┬────────────┘
+     │
+     │ 9. notify_observers()
+     ▼
+┌─────────────────┐
+│   Passenger     │
+│  (Notified)     │
+└─────────────────┘
+```
+
+### 3. Payment Processing Flow
+
+```
+┌──────────┐
+│Passenger │
+└────┬─────┘
+     │
+     │ 1. process_payment()
+     ▼
+┌─────────────────┐
+│AirlineManagement│
+└────┬────────────┘
+     │
+     │ 2. Calculate price
+     │ 3. Apply decorators
+     ▼
+┌─────────────────┐
+│ PriceDecorators │
+│ - Tax           │
+│ - ServiceCharge │
+│ - Discount      │
+└────┬────────────┘
+     │
+     │ 4. Process payment
+     ▼
+┌─────────────────┐
+│ PaymentStrategy │
+│  (Strategy)     │
+└────┬────────────┘
+     │
+     │ 5. Execute payment
+     ▼
+┌─────────────────┐
+│ PaymentResult   │
+└─────────────────┘
+```
+
+### 4. Flight Status Update Flow
+
+```
+┌──────────┐
+│  Admin   │
+└────┬─────┘
+     │
+     │ 1. update_flight_status()
+     ▼
+┌─────────────────┐
+│AirlineManagement│
+└────┬────────────┘
+     │
+     │ 2. Get flight
+     │ 3. Update status
+     ▼
+┌─────────────────┐
+│     Flight      │
+└────┬────────────┘
+     │
+     │ 4. notify_observers()
+     ▼
+┌─────────────────┐
+│  All Observers  │
+│  (Passengers)   │
+└────┬────────────┘
+     │
+     │ 5. update_on_flight_status_change()
+     ▼
+┌─────────────────┐
+│  Passengers     │
+│  (Notified)     │
+└─────────────────┘
+```
+
+### 5. Complete System Interaction Flow
+
+```
+┌──────────────┐
+│   Client     │
+│  (demo.py)   │
+└──────┬───────┘
+       │
+       │ All Operations
+       ▼
+┌─────────────────────────────────────┐
+│   AirlineManagementFacade           │
+│   (Singleton/Facade)                │
+│  - User Management                  │
+│  - Flight Management                │
+│  - Booking Management               │
+│  - Payment Processing               │
+└──────┬──────────────────────────────┘
+       │
+       ├──────────────────┬──────────────────┐
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   User      │  │   Flight    │  │  Booking    │
+│ Repository  │  │ Repository  │  │ Repository  │
+└─────────────┘  └─────────────┘  └─────────────┘
+       │                  │                  │
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   Users     │  │   Flights   │  │  Bookings   │
+│             │  │  - Aircraft │  │  - Seats    │
+│             │  │  - Seats    │  │  - Payment  │
+└─────────────┘  └─────────────┘  └─────────────┘
+       │                  │                  │
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│ Booking     │  │ Payment     │  │ SeatState   │
+│ Service     │  │ Service     │  │  (State     │
+│             │  │             │  │   Pattern)  │
+└─────────────┘  └─────────────┘  └─────────────┘
+```
+
+## 📋 Entity Attributes Summary
+
+### User Entity
+
+- `id`: Unique identifier (UUID)
+- `name`: User's full name
+- `email`: User's email address
+- `bookings`: List of Booking objects
+
+### Passenger Entity (extends User)
+
+- `passenger_type`: PassengerType (REGULAR, SENIOR, CHILD)
+
+### Flight Entity
+
+- `flight_number`: Unique flight identifier
+- `aircraft`: Reference to Aircraft
+- `source`: Source airport/city
+- `destination`: Destination airport/city
+- `departure_time`: Flight departure time
+- `arrival_time`: Flight arrival time
+- `seats`: Dictionary of Seat objects
+- `status`: FlightStatus (SCHEDULED, BOARDING, DEPARTED, IN_AIR, LANDED, ARRIVED)
+- `observers`: List of Observer objects
+
+### Aircraft Entity
+
+- `tail_number`: Unique aircraft identifier
+- `model`: Aircraft model name
+- `total_seats`: Maximum number of seats
+
+### Seat Entity
+
+- `seat_number`: Seat identifier
+- `seat_type`: SeatType (ECONOMY, PREMIUM_ECONOMY, BUSINESS, FIRST_CLASS)
+- `status`: SeatStatus (AVAILABLE, LOCKED, RESERVED, OCCUPIED)
+- `state`: SeatState object
+- `price`: Seat price
+- `lock`: Thread lock for concurrency
+
+### Booking Entity
+
+- `id`: Unique identifier (UUID)
+- `passenger`: Reference to Passenger
+- `flight`: Reference to Flight
+- `seats`: List of Seat objects
+- `payment_result`: PaymentResult object
+- `status`: BookingStatus (PENDING, CONFIRMED, CANCELLED)
+- `price`: Total booking price
+
+### PaymentResult Entity
+
+- `amount`: Payment amount
+- `payment_method`: PaymentMethod (CREDIT_CARD, DEBIT_CARD, UPI, CASH)
+- `payment_status`: PaymentStatus (SUCCESS, FAILED)
+
 ## 🔄 Data Flow
 
 ### System Architecture Overview

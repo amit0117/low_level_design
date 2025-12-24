@@ -165,6 +165,383 @@ The demo includes comprehensive sections:
 - **🚨 Error Handling**: Comprehensive validation and exception management
 - **🛡️ Security**: Proxy pattern for access control and rate limiting
 
+## 📊 Entity Relationship Diagram
+
+### Core Entities and Relationships
+
+```
+┌─────────────────────────────────────┐
+│          UPIApp                     │
+│─────────────────────────────────────│
+│ (Facade/Singleton)                  │
+│ - payment_service                   │
+│ - user_repository                   │
+│ - account_repository                │
+│ - fraud_proxy                       │
+│ - npci                              │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (manages)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│            User                     │
+│─────────────────────────────────────│
+│ id                                  │
+│ name                                │
+│ phone                               │
+│ email                               │
+│ accounts (List<Account>)            │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (has)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│          Account                    │
+│─────────────────────────────────────│
+│ account_number                      │
+│ account_type (AccountType)          │
+│ balance                             │
+│ user (User)                         │
+│ bank_name                           │
+│ transactions (List<Transaction>)    │
+│ observers (List<Observer>)          │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (involved in)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│          Payment                    │
+│─────────────────────────────────────│
+│ payment_id                          │
+│ payment_type (PaymentType)          │
+│ payment_method (PaymentMethod)      │
+│ amount                              │
+│ currency                            │
+│ status (PaymentStatus)              │
+│ payer_account (Account)             │
+│ payee_account (Account)             │
+│ transactions (List<Transaction>)    │
+│ created_at                          │
+│ expiry_time                         │
+│ observers (List<Observer>)          │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (has)
+       │
+       ▼
+┌─────────────────────────────────────────┐
+│        Transaction                      │
+│─────────────────────────────────────────│
+│ transaction_id                          │
+│ payment (Payment)                       │
+│ transaction_status (TransactionStatus)  │
+│ transaction_state (TransactionState)    │
+│ timestamp                               │
+│ observers (List<Observer>)              │
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│          NPCI                       │
+│─────────────────────────────────────│
+│ (Singleton)                         │
+│ - process_payment()                 │
+│ - resolve_vpa()                     │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│      TransactionState               │
+│─────────────────────────────────────│
+│ (Abstract)                          │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┬──────────────┬──────────────┐
+       ▼              ▼              ▼              ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│  Pending    │ │  Success    │ │   Failed    │ │  Cancelled  │
+│   State     │ │   State     │ │   State     │ │   State     │
+└─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
+
+┌─────────────────────────────────────┐
+│      PaymentStrategy                │
+│─────────────────────────────────────│
+│ (Abstract)                          │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┬──────────────┬──────────────┬
+       ▼              ▼              ▼              ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│   UPIPush   │ │   UPIPull   │ │ CreditCard  │ │  DebitCard  │
+│  Strategy   │ │  Strategy   │ │  Strategy   │ │  Strategy   │
+└─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
+```
+
+### Entity Relationships
+
+1. **UPIApp ↔ User** (One-to-Many via Repository)
+
+   - App manages multiple Users
+   - Users stored in UserRepository
+
+2. **User ↔ Account** (One-to-Many)
+
+   - A User can have multiple Accounts
+   - Each Account belongs to one User
+
+3. **Account ↔ Payment** (One-to-Many, Two roles)
+
+   - An Account can be payer in multiple Payments
+   - An Account can be payee in multiple Payments
+
+4. **Payment ↔ Transaction** (One-to-Many)
+
+   - A Payment can have multiple Transactions (for retries)
+   - Each Transaction belongs to one Payment
+
+5. **Transaction ↔ TransactionState** (One-to-One)
+
+   - Each Transaction has one current State
+   - State transitions: Pending → Success/Failed/Cancelled
+
+6. **Payment ↔ PaymentStrategy** (One-to-One, via PaymentService)
+
+   - Payment processing uses one PaymentStrategy
+   - Strategy determines payment method logic
+
+7. **UPIApp ↔ NPCI** (One-to-One)
+
+   - App communicates with one NPCI instance (Singleton)
+   - NPCI handles inter-bank transfers
+
+8. **Observer Pattern Relationships**
+
+   - Account implements `AccountSubject` - notifies on balance changes
+   - Payment implements `PaymentSubject` - notifies on status changes
+   - Transaction implements `TransactionSubject` - notifies on status changes
+   - User implements `AccountObserver`, `PaymentObserver`, `TransactionObserver` - receives notifications
+
+9. **Proxy Pattern Relationships**
+
+   - FraudProxy sits between UPIApp and NPCI
+   - RateLimitProxy controls access rate
+   - SecureBankProxy handles authentication
+
+10. **Chain of Responsibility Relationships**
+    - Payment processing chain: Validation → Authentication → Fraud → Routing → Settlement
+    - Each handler processes request sequentially
+
+## 🔄 Data Flow Diagrams
+
+### 1. Payment Initiation Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. send_money(amount, payee_vpa)
+     ▼
+┌─────────────────┐
+│     UPIApp      │
+└────┬────────────┘
+     │
+     │ 2. Fraud Proxy check
+     │ 3. Rate limit check
+     ▼
+┌─────────────────┐
+│  FraudProxy     │
+└────┬────────────┘
+     │
+     │ 4. Check fraud rules
+     │ 5. Forward to NPCI
+     ▼
+┌─────────────────┐
+│      NPCI       │
+└────┬────────────┘
+     │
+     │ 6. Resolve VPA
+     │ 7. Process payment
+     │ 8. Create Transaction
+     ▼
+┌─────────────────┐
+│   Transaction   │
+│  - State        │
+│  - Payment      │
+└─────────────────┘
+```
+
+### 2. Payment Processing Flow
+
+```
+┌──────────┐
+│   NPCI   │
+└────┬─────┘
+     │
+     │ 1. process_payment()
+     ▼
+┌─────────────────┐
+│ PaymentService  │
+└────┬────────────┘
+     │
+     │ 2. Chain of Responsibility
+     ▼
+┌─────────────────┐
+│ ProcessingChain │
+│  - Validation   │
+│  - Auth         │
+│  - Fraud        │
+│  - Routing      │
+│  - Settlement   │
+└────┬────────────┘
+     │
+     │ 3. Execute payment
+     │ 4. Update accounts
+     │ 5. Update transaction state
+     ▼
+┌─────────────────┐
+│   Accounts      │
+│  (Balance       │
+│   Updated)      │
+└─────────────────┘
+```
+
+### 3. Transaction State Transition Flow
+
+```
+┌──────────┐
+│ Payment  │
+└────┬─────┘
+     │
+     │ 1. create_transaction()
+     ▼
+┌─────────────────┐
+│   Transaction   │
+└────┬────────────┘
+     │
+     │ 2. Set state to Pending
+     │ 3. process()
+     ▼
+┌─────────────────┐
+│  PendingState   │
+└────┬────────────┘
+     │
+     │ 4. Execute payment
+     │ 5. If success → SuccessState
+     │ 6. If failed → FailedState
+     ▼
+┌─────────────────┐
+│ SuccessState/   │
+│ FailedState     │
+└────┬────────────┘
+     │
+     │ 7. notify_observers()
+     ▼
+┌─────────────────┐
+│   Observers     │
+│  (Notified)     │
+└─────────────────┘
+```
+
+### 4. Complete System Interaction Flow
+
+```
+┌──────────────┐
+│   Client     │
+│  (demo.py)   │
+└──────┬───────┘
+       │
+       │ All Operations
+       ▼
+┌──────────────────────────────────────┐
+│          UPIApp                      │
+│          (Facade)                    │
+│  - Payment Processing                │
+│  - User Management                   │
+│  - Account Management                │
+└──────┬───────────────────────────────┘
+       │
+       ├──────────────────┬──────────────────┐
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   Fraud     │  │     NPCI    │  │  Payment    │
+│   Proxy     │  │  (Singleton)│  │  Service    │
+└─────────────┘  └─────────────┘  └─────────────┘
+       │                  │                  │
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   Users     │  │  Accounts   │  │ Payments    │
+│  - Accounts │  │  - Balance  │  │  - Status   │
+│             │  │  - Bank     │  │  - Method   │
+└─────────────┘  └─────────────┘  └─────────────┘
+       │                  │                  │
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌────────────────┐  ┌─────────────────┐
+│ Transactions│  │TransactionState│  │ PaymentStrategy │
+│  - State    │  │  - Pending     │  │  - UPI          │
+│  - Status   │  │  - Success     │  │  - Card         │
+│             │  │  - Failed      │  │                 │
+└─────────────┘  └────────────────┘  └─────────────────┘
+```
+
+## 📋 Entity Attributes Summary
+
+### User Entity
+
+- `id`: Unique identifier (UUID)
+- `name`: User's name
+- `phone`: User's phone number
+- `email`: User's email address
+- `accounts`: List of Account objects
+
+### Account Entity
+
+- `account_number`: Unique account identifier
+- `account_type`: AccountType (SAVINGS, CURRENT)
+- `balance`: Account balance
+- `user`: Reference to User
+- `bank_name`: Bank name (HDFC, SBI, ICICI)
+- `transactions`: List of Transaction objects
+- `observers`: List of Observer objects
+
+### Payment Entity
+
+- `payment_id`: Unique identifier (UUID)
+- `payment_type`: PaymentType (SEND_MONEY, REQUEST_MONEY)
+- `payment_method`: PaymentMethod (UPI_PUSH, UPI_PULL, CREDIT_CARD, DEBIT_CARD, NET_BANKING)
+- `amount`: Payment amount
+- `currency`: Currency (INR)
+- `status`: PaymentStatus (PENDING, SUCCESS, FAILED, CANCELLED, EXPIRED)
+- `payer_account`: Reference to payer Account
+- `payee_account`: Reference to payee Account
+- `transactions`: List of Transaction objects
+- `created_at`: Payment creation time
+- `expiry_time`: Payment expiry time
+- `observers`: List of Observer objects
+
+### Transaction Entity
+
+- `transaction_id`: Unique identifier (UUID)
+- `payment`: Reference to Payment
+- `transaction_status`: TransactionStatus (PENDING, SUCCESS, FAILED, CANCELLED)
+- `transaction_state`: TransactionState object
+- `timestamp`: Transaction timestamp
+- `observers`: List of Observer objects
+
+### NPCI Entity (Singleton)
+
+- Processes inter-bank payments
+- Resolves VPA to account
+- Handles settlement
+
 ## 🔄 Data Flow
 
 ### System Architecture Overview

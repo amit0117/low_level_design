@@ -229,6 +229,373 @@ class Auction(AuctionSubject, AuctionComponent):
 - **Responsibilities**: Component registration, request delegation
 - **Integration**: Chain of Responsibility, Command pattern
 
+## 📊 Entity Relationship Diagram
+
+### Core Entities and Relationships
+
+```
+┌─────────────────────────────────────┐
+│    OnlineAuctionSystem              │
+│─────────────────────────────────────│
+│ (Singleton)                         │
+│ - auction_repository                │
+│ - user_repository                   │
+│ - payment_service                   │
+│ - auction_chain                     │
+│ - mediator                          │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (manages)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│            User                     │
+│─────────────────────────────────────│
+│ id                                  │
+│ name                                │
+│ email                               │
+│ password                            │
+│ bidding_history (List<Bid>)         │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (creates/participates)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│          Auction                    │
+│─────────────────────────────────────│
+│ id                                  │
+│ owner (User)                        │
+│ item (AuctionItem)                  │
+│ starting_price                      │
+│ current_price                       │
+│ start_time                          │
+│ end_time                            │
+│ bids (List<Bid>)                    │
+│ status (AuctionStatus)              │
+│ state (AuctionState)                │
+│ auction_type (AuctionType)          │
+│ auction_strategy (AuctionStrategy)  │
+│ observers (List<Observer>)          │
+└──────┬──────────────────────────────┘
+       │
+       │ 1 (has)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│        AuctionItem                  │
+│─────────────────────────────────────│
+│ id                                  │
+│ name                                │
+│ description                         │
+│ starting_price                      │
+│ item_type (AuctionItemType)         │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│            Bid                      │
+│─────────────────────────────────────│
+│ id                                  │
+│ user (User)                         │
+│ auction (Auction)                   │
+│ amount                              │
+│ timestamp                           │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│        AuctionState                 │
+│─────────────────────────────────────│
+│ (Abstract)                          │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┬──────────────┬──────────────┐
+       ▼              ▼              ▼              ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│ Pending     │ │   Active    │ │   Closed    │ │  Cancelled  │
+│   State     │ │   State     │ │   State     │ │   State     │
+└─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
+
+┌─────────────────────────────────────┐
+│      AuctionStrategy                │
+│─────────────────────────────────────│
+│ (Abstract)                          │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┬──────────────┬──────────────┐
+       ▼              ▼              ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│   English  │ │    Dutch    │ │  SealedBid  │
+│   Strategy │ │   Strategy  │ │   Strategy  │
+└─────────────┘ └─────────────┘ └─────────────┘
+```
+
+### Entity Relationships
+
+1. **OnlineAuctionSystem ↔ User** (One-to-Many via Repository)
+
+   - System manages multiple Users
+   - Users stored in UserRepository
+
+2. **OnlineAuctionSystem ↔ Auction** (One-to-Many via Repository)
+
+   - System manages multiple Auctions
+   - Auctions stored in AuctionRepository
+
+3. **User ↔ Auction** (One-to-Many, Two roles)
+
+   - A User can own multiple Auctions (as owner)
+   - A User can participate in multiple Auctions (as bidder)
+
+4. **Auction ↔ AuctionItem** (One-to-One)
+
+   - An Auction has one AuctionItem
+   - An AuctionItem is sold in one Auction
+
+5. **Auction ↔ Bid** (One-to-Many)
+
+   - An Auction can have multiple Bids
+   - Each Bid belongs to one Auction
+
+6. **User ↔ Bid** (One-to-Many)
+
+   - A User can place multiple Bids
+   - Each Bid is placed by one User
+
+7. **Auction ↔ AuctionState** (One-to-One)
+
+   - Each Auction has one current State
+   - State transitions: Pending → Active → Closed/Cancelled
+
+8. **Auction ↔ AuctionStrategy** (One-to-One)
+
+   - Each Auction uses one Strategy
+   - Strategy determines bid validation rules
+
+9. **Observer Pattern Relationships**
+
+   - Auction implements `AuctionSubject` - notifies on bid placement
+   - User implements `AuctionObserver` - receives bid notifications
+
+10. **Mediator Pattern Relationships**
+
+    - AuctionMediator coordinates between Users, Auctions, and Bids
+    - Components communicate through mediator
+
+11. **Chain of Responsibility Relationships**
+    - Bid processing chain: RateLimitHandler → ValidationHandler → Auction
+    - Handlers process requests sequentially
+
+## 🔄 Data Flow Diagrams
+
+### 1. Auction Creation Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. create_auction()
+     ▼
+┌─────────────────┐
+│OnlineAuctionSys │
+└────┬────────────┘
+     │
+     │ 2. Create AuctionItem
+     │ 3. Create Auction with strategy
+     ▼
+┌─────────────────┐
+│     Auction     │
+│  - Item         │
+│  - Strategy     │
+│  - State        │
+└────┬────────────┘
+     │
+     │ 4. Register with mediator
+     ▼
+┌─────────────────┐
+│    Mediator     │
+└─────────────────┘
+```
+
+### 2. Bid Placement Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. place_bid()
+     ▼
+┌─────────────────┐
+│OnlineAuctionSys │
+└────┬────────────┘
+     │
+     │ 2. Create PlaceBidCommand
+     ▼
+┌─────────────────┐
+│ PlaceBidCommand │
+│  (Command)      │
+└────┬────────────┘
+     │
+     │ 3. execute()
+     │ 4. mediator.handle_bid_placement()
+     ▼
+┌─────────────────┐
+│    Mediator     │
+└────┬────────────┘
+     │
+     │ 5. Process through chain
+     ▼
+┌─────────────────┐
+│ AuctionChain    │
+│  - RateLimit    │
+│  - Validation   │
+└────┬────────────┘
+     │
+     │ 6. auction.place_bid()
+     ▼
+┌─────────────────┐
+│     Auction     │
+└────┬────────────┘
+     │
+     │ 7. strategy.can_place_bid()
+     │ 8. Add bid
+     │ 9. Update price
+     │ 10. notify_observers()
+     ▼
+┌─────────────────┐
+│  All Observers  │
+│  (Users)        │
+└─────────────────┘
+```
+
+### 3. Auction State Transition Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. start_auction()
+     ▼
+┌─────────────────┐
+│     Auction     │
+└────┬────────────┘
+     │
+     │ 2. set_state(ActiveState())
+     │ 3. set_status(ACTIVE)
+     ▼
+┌─────────────────┐
+│  ActiveState    │
+└────┬────────────┘
+     │
+     │ 4. Accept bids
+     │ 5. end_auction()
+     ▼
+┌─────────────────┐
+│  ClosedState    │
+└────┬────────────┘
+     │
+     │ 6. determine_winner()
+     ▼
+┌─────────────────┐
+│     Winner      │
+│  (User)         │
+└─────────────────┘
+```
+
+### 4. Complete System Interaction Flow
+
+```
+┌──────────────┐
+│   Client     │
+│  (demo.py)   │
+└──────┬───────┘
+       │
+       │ All Operations
+       ▼
+┌─────────────────────────────────────┐
+│    OnlineAuctionSystem              │
+│    (Singleton)                      │
+│  - Auction Management               │
+│  - User Management                  │
+│  - Bid Processing                   │
+└──────┬──────────────────────────────┘
+       │
+       ├──────────────────┬──────────────────┐
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│ Auction     │  │   User      │  │   Payment   │
+│ Repository  │  │ Repository  │  │  Service    │
+└─────────────┘  └─────────────┘  └─────────────┘
+       │                  │                  │
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│  Auctions   │  │   Users     │  │  Payments   │
+│  - Items    │  │  - Bids     │  │             │
+│  - Bids     │  │             │  │             │
+└─────────────┘  └─────────────┘  └─────────────┘
+       │
+       │
+       ▼
+┌─────────────────────────────────────┐
+│         Pattern Layer               │
+│  - AuctionState (State)             │
+│  - AuctionStrategy (Strategy)       │
+│  - AuctionMediator (Mediator)       │
+│  - Chain of Responsibility          │
+│  - Commands (Command)               │
+└─────────────────────────────────────┘
+```
+
+## 📋 Entity Attributes Summary
+
+### User Entity
+
+- `id`: Unique identifier (UUID)
+- `name`: User's full name
+- `email`: User's email address
+- `password`: User password
+- `bidding_history`: List of Bid objects
+
+### Auction Entity
+
+- `id`: Unique identifier (UUID)
+- `owner`: User who created the auction
+- `item`: AuctionItem being auctioned
+- `starting_price`: Initial price
+- `current_price`: Current highest bid
+- `start_time`: Auction start time
+- `end_time`: Auction end time
+- `bids`: List of Bid objects
+- `status`: AuctionStatus (PENDING, ACTIVE, CLOSED, CANCELLED)
+- `state`: AuctionState object
+- `auction_type`: AuctionType (ENGLISH, DUTCH, SEALED_BID)
+- `auction_strategy`: AuctionStrategy object
+- `observers`: List of Observer objects
+
+### AuctionItem Entity
+
+- `id`: Unique identifier (UUID)
+- `name`: Item name
+- `description`: Item description
+- `starting_price`: Starting price
+- `item_type`: AuctionItemType (PHYSICAL, DIGITAL)
+
+### Bid Entity
+
+- `id`: Unique identifier (UUID)
+- `user`: User who placed the bid
+- `auction`: Auction this bid belongs to
+- `amount`: Bid amount
+- `timestamp`: When bid was placed
+
 ## 🔄 Data Flow
 
 ### Bid Placement Flow

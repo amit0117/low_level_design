@@ -18,6 +18,337 @@ A scalable traffic signal control system for multi-road intersections using obje
 - Allows runtime selection of timing algorithms
 - Easy to extend with new strategies
 
+## 📊 Entity Relationship Diagram
+
+### Core Entities and Relationships
+
+```
+┌─────────────────────────────────────┐
+│    TrafficController                │
+│─────────────────────────────────────│
+│ - intersection (Intersection)       │
+│ - strategy (TimingStrategy)         │
+│ - phases (List<SignalPhase>)        │
+│ - current_phase_index               │
+└──────┬──────────────────────────────┘
+       │
+       │ 1 (manages)
+       │
+       ▼
+┌──────────────────────────────────────┐
+│        Intersection                  │
+│──────────────────────────────────────│
+│ intersection_id                      │
+│ roads (Dict<Direction, Road>)        │
+│ traffic_lights (Dict<Direction,      │
+│                 TrafficLight>)       │
+│ current_phase (SignalPhase)          │
+│ phase_history (List<SignalPhase>)    │
+└──────┬───────────────────────────────┘
+       │
+       │ 1..* (has)
+       │
+       ├──────────────┬──────────────┐
+       ▼              ▼              ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│    Road     │ │ TrafficLight│ │ SignalPhase │
+└─────────────┘ └─────────────┘ └─────────────┘
+
+┌──────────────────────────────────────┐
+│            Road                      │
+│──────────────────────────────────────│
+│ road_id                              │
+│ direction (Direction)                │
+│ num_lanes                            │
+│ traffic_light (TrafficLight)         │
+└──────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│        TrafficLight                 │
+│─────────────────────────────────────│
+│ road (Road)                         │
+│ state (TrafficLightState)           │
+│ remaining_duration                  │
+└──────┬──────────────────────────────┘
+       │
+       │ 1 (has)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│    TrafficLightState                │
+│─────────────────────────────────────│
+│ (Abstract)                          │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┬──────────────┬
+       ▼              ▼              ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│  RedState   │ │ YellowState │ │ GreenState  │
+└─────────────┘ └─────────────┘ └─────────────┘
+
+┌──────────────────────────────────────┐
+│        SignalPhase                   │
+│──────────────────────────────────────│
+│ phase_type (PhaseType)               │
+│ allowed_directions (Set<Direction>)  │
+│ duration                             │
+└──────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│      TimingStrategy                 │
+│─────────────────────────────────────│
+│ (Abstract)                          │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ▼
+┌─────────────┐
+│   Fixed     │
+│   Timing    │
+│  Strategy   │
+└─────────────┘
+```
+
+### Entity Relationships
+
+1. **TrafficController ↔ Intersection** (One-to-One)
+
+   - Controller manages one Intersection
+   - Intersection coordinates all traffic lights
+
+2. **Intersection ↔ Road** (One-to-Many)
+
+   - An Intersection has multiple Roads
+   - Each Road belongs to one Intersection
+
+3. **Intersection ↔ TrafficLight** (One-to-Many)
+
+   - An Intersection has multiple TrafficLights
+   - Each TrafficLight belongs to one Intersection
+
+4. **Road ↔ TrafficLight** (One-to-One)
+
+   - Each Road has one TrafficLight
+   - TrafficLight controls traffic on that Road
+
+5. **TrafficLight ↔ TrafficLightState** (One-to-One)
+
+   - Each TrafficLight has one current State
+   - State transitions: Red → Yellow → Green → Red
+
+6. **TrafficController ↔ SignalPhase** (One-to-Many)
+
+   - Controller manages multiple SignalPhases
+   - Phases define which roads can be green simultaneously
+
+7. **TrafficController ↔ TimingStrategy** (One-to-One)
+
+   - Controller uses one TimingStrategy
+   - Strategy determines phase durations
+
+8. **SignalPhase ↔ Road** (Many-to-Many, via allowed_directions)
+   - A SignalPhase allows certain Directions (Roads)
+   - Multiple Roads can be in same phase
+
+## 🔄 Data Flow Diagrams
+
+### 1. Traffic Signal Control Flow
+
+```
+┌──────────┐
+│  System  │
+└────┬─────┘
+     │
+     │ 1. tick(current_time)
+     ▼
+┌─────────────────┐
+│TrafficController│
+└────┬────────────┘
+     │
+     │ 2. intersection.tick()
+     │ 3. Check phase duration
+     │ 4. Calculate next phase
+     ▼
+┌─────────────────┐
+│ TimingStrategy  │
+└────┬────────────┘
+     │
+     │ 5. calculate_duration()
+     │ 6. Get next phase
+     ▼
+┌─────────────────┐
+│  SignalPhase    │
+└────┬────────────┘
+     │
+     │ 7. intersection.transition_phase()
+     │ 8. Update traffic lights
+     ▼
+┌─────────────────┐
+│ TrafficLights   │
+│  (State Updated)│
+└─────────────────┘
+```
+
+### 2. Phase Transition Flow
+
+```
+┌──────────┐
+│Controller│
+└────┬─────┘
+     │
+     │ 1. transition_phase(new_phase)
+     ▼
+┌─────────────────┐
+│  Intersection   │
+└────┬────────────┘
+     │
+     │ 2. can_transition()
+     │ 3. Check conflicts
+     │ 4. If safe, transition
+     ▼
+┌─────────────────┐
+│  SignalPhase    │
+└────┬────────────┘
+     │
+     │ 5. Update allowed directions
+     │ 6. Update traffic lights
+     ▼
+┌─────────────────┐
+│ TrafficLights   │
+│  - RedState     │
+│  - YellowState  │
+│  - GreenState   │
+└─────────────────┘
+```
+
+### 3. Traffic Light State Transition Flow
+
+```
+┌──────────┐
+│Controller│
+└────┬─────┘
+     │
+     │ 1. transition_to(new_state)
+     ▼
+┌─────────────────┐
+│ TrafficLight    │
+└────┬────────────┘
+     │
+     │ 2. state.transition_to()
+     │ 3. Validate transition
+     │ 4. Update state
+     │ 5. Set duration
+     ▼
+┌────────────────────┐
+│ TrafficLightState  │
+│  (Red/Yellow/Green)│
+└────┬───────────────┘
+     │
+     │ 6. State-specific behavior
+     │ 7. Timer countdown
+     │ 8. Auto-transition when expired
+     ▼
+┌─────────────────┐
+│  Next State     │
+└─────────────────┘
+```
+
+### 4. Complete System Interaction Flow
+
+```
+┌──────────────┐
+│   Client     │
+│  (demo.py)   │
+└──────┬───────┘
+       │
+       │ All Operations
+       ▼
+┌─────────────────────────────────────┐
+│    TrafficController                │
+│  - Phase Management                 │
+│  - Timing Strategy                  │
+│  - Intersection Coordination        │
+└──────┬──────────────────────────────┘
+       │
+       │
+       ▼
+┌─────────────────────────────────────┐
+│        Intersection                 │
+│  - Road Management                  │
+│  - Traffic Light Coordination       │
+│  - Conflict Prevention              │
+└──────┬──────────────────────────────┘
+       │
+       ├──────────────────┬──────────────────┐
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌──────────────┐  ┌──────────────┐
+│    Roads    │  │ TrafficLights│  │ SignalPhases │
+│  - Direction│  │  - State     │  │  - Allowed   │
+│  - Lanes    │  │  - Duration  │  │    Directions│
+└─────────────┘  └──────────────┘  └──────────────┘
+       │                  │
+       │                  │
+       ▼                  ▼
+┌─────────────┐  ┌────────────────┐
+│ TrafficLight│  │ TimingStrategy │
+│  State      │  │  - Fixed       │
+│  - Red      │  │  - Actuated    │
+│  - Yellow   │  │  - Adaptive    │
+│  - Green    │  │                │
+└─────────────┘  └────────────────┘
+```
+
+## 📋 Entity Attributes Summary
+
+### TrafficController Entity
+
+- `intersection`: Reference to Intersection
+- `strategy`: TimingStrategy object
+- `phases`: List of SignalPhase objects
+- `current_phase_index`: Current phase index
+- `phase_start_time`: When current phase started
+
+### Intersection Entity
+
+- `intersection_id`: Unique identifier
+- `roads`: Dictionary mapping Direction to Road
+- `traffic_lights`: Dictionary mapping Direction to TrafficLight
+- `current_phase`: Current active SignalPhase
+- `phase_history`: List of previous phases
+
+### Road Entity
+
+- `road_id`: Unique identifier
+- `direction`: Direction (NORTH, SOUTH, EAST, WEST)
+- `num_lanes`: Number of lanes
+- `traffic_light`: Reference to TrafficLight
+
+### TrafficLight Entity
+
+- `road`: Reference to Road
+- `state`: TrafficLightState object
+- `remaining_duration`: Time remaining in current state
+
+### TrafficLightState Entity (Abstract)
+
+- `RedState`: Red light state
+- `YellowState`: Yellow light state
+- `GreenState`: Green light state
+
+### SignalPhase Entity
+
+- `phase_type`: PhaseType (NORTH_SOUTH_GREEN, EAST_WEST_GREEN, ALL_RED, EMERGENCY_PHASE)
+- `allowed_directions`: Set of allowed Directions
+- `duration`: Phase duration in seconds
+
+### TimingStrategy Entity (Abstract)
+
+- `FixedTimingStrategy`: Fixed durations for each phase
+
 ## Core Entities
 
 ### TrafficLight

@@ -194,6 +194,424 @@ The demo includes two main sections:
 - **Feed Generation**: Chronological sorting with strategy pattern
 - **Error Handling**: Comprehensive validation and error management
 
+## 📊 Entity Relationship Diagram
+
+### Core Entities and Relationships
+
+```
+┌──────────────────────────────────────┐
+│   SocialNetworkManager               │
+│──────────────────────────────────────│
+│ (Singleton/Facade)                   │
+│ - user_service                       │
+│ - post_service                       │
+│ - feed_service                       │
+│ - user_repository                    │
+│ - post_repository                    │
+└──────┬───────────────────────────────┘
+       │
+       │ 1..* (manages)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│            User                     │
+│─────────────────────────────────────│
+│ id                                  │
+│ name                                │
+│ email                               │
+│ profile (Profile)                   │
+│ connections (List<Connection>)      │
+│ posts (List<Post>)                  │
+│ notifications (List<Notification>)  │
+└──────┬──────────────────────────────┘
+       │
+       │ 1 (has)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│          Profile                    │
+│─────────────────────────────────────│
+│ bio                                 │
+│ location                            │
+│ experience (List<Experience>)       │
+│ education (List<Education>)         │
+│ skills (List<Skill>)                │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│          Connection                 │
+│─────────────────────────────────────│
+│ id                                  │
+│ user1 (User)                        │
+│ user2 (User)                        │
+│ state (ConnectionState)             │
+│ status (ConnectionStatus)           │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│            Post                     │
+│─────────────────────────────────────│
+│ id                                  │
+│ author (User)                       │
+│ content                             │
+│ timestamp                           │
+│ likes (List<Like>)                  │
+│ comments (List<Comment>)            │
+│ shares (List<Share>)                │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (has)
+       │
+       ├──────────────┬──────────────┐
+       ▼              ▼              ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│    Like     │ │  Comment    │ │   Share     │
+└─────────────┘ └─────────────┘ └─────────────┘
+
+┌─────────────────────────────────────┐
+│          Notification               │
+│─────────────────────────────────────│
+│ id                                  │
+│ user (User)                         │
+│ type (NotificationType)             │
+│ message                             │
+│ timestamp                           │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│            Job                      │
+│─────────────────────────────────────│
+│ id                                  │
+│ title                               │
+│ company (Company)                   │
+│ description                         │
+│ requirements                        │
+│ salary_range                        │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│        ConnectionState              │
+│─────────────────────────────────────│
+│ (Abstract)                          │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┬──────────────┬──────────────┐
+       ▼              ▼              ▼              ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│NotRequested │ │   Pending   │ │  Accepted   │ │  Rejected   │
+│   State     │ │   State     │ │   State     │ │   State     │
+└─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
+```
+
+### Entity Relationships
+
+1. **SocialNetworkManager ↔ User** (One-to-Many via Repository)
+
+   - Manager manages multiple Users
+   - Users stored in UserRepository
+
+2. **User ↔ Profile** (One-to-One)
+
+   - Each User has one Profile
+   - Profile contains extended user information
+
+3. **User ↔ Connection** (One-to-Many, Two roles)
+
+   - A User can have multiple Connections
+   - Each Connection links two Users (user1, user2)
+
+4. **User ↔ Post** (One-to-Many)
+
+   - A User can create multiple Posts
+   - Each Post has one author (User)
+
+5. **Post ↔ Like** (One-to-Many)
+
+   - A Post can have multiple Likes
+   - Each Like belongs to one Post
+
+6. **Post ↔ Comment** (One-to-Many)
+
+   - A Post can have multiple Comments
+   - Each Comment belongs to one Post
+
+7. **Post ↔ Share** (One-to-Many)
+
+   - A Post can be shared multiple times
+   - Each Share references one Post
+
+8. **User ↔ Notification** (One-to-Many)
+
+   - A User can have multiple Notifications
+   - Each Notification belongs to one User
+
+9. **Connection ↔ ConnectionState** (One-to-One)
+
+   - Each Connection has one current State
+   - State transitions: NotRequested → Pending → Accepted/Rejected
+
+10. **Observer Pattern Relationships**
+
+    - Post implements `CommentableSubject` - notifies on likes/comments
+    - Connection implements `ConnectionSubject` - notifies on connection changes
+    - User implements `CommentableObserver` and `ConnectionObserver` - receives notifications
+
+11. **Strategy Pattern Relationships**
+
+    - FeedService uses `FeedGenerationStrategy` (chronological, engagement-based, etc.)
+    - RecommendationService uses `JobRecommendationStrategy` (skill-based, location-based, etc.)
+
+12. **Composite Pattern Relationships**
+    - Profile uses composite pattern for Experience, Education, Skills
+    - ProfileComponent interface for hierarchical structure
+
+## 🔄 Data Flow Diagrams
+
+### 1. User Registration Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. register_user()
+     ▼
+┌─────────────────┐
+│SocialNetworkMgr │
+└────┬────────────┘
+     │
+     │ 2. user_service.register_user()
+     ▼
+┌─────────────────┐
+│  UserService    │
+└────┬────────────┘
+     │
+     │ 3. Create User
+     │ 4. Create Profile
+     │ 5. Store in repository
+     ▼
+┌─────────────────┐
+│ UserRepository  │
+└─────────────────┘
+```
+
+### 2. Friend Connection Flow
+
+```
+┌──────────┐
+│  User A  │
+└────┬─────┘
+     │
+     │ 1. send_connection_request(user_b)
+     ▼
+┌─────────────────┐
+│SocialNetworkMgr │
+└────┬────────────┘
+     │
+     │ 2. user_service.send_request()
+     ▼
+┌─────────────────┐
+│  UserService    │
+└────┬────────────┘
+     │
+     │ 3. Create Connection
+     │ 4. Set state to Pending
+     │ 5. notify_observers()
+     ▼
+┌─────────────────┐
+│   Connection    │
+└────┬────────────┘
+     │
+     │ 6. User B receives notification
+     │ 7. accept_connection()
+     │ 8. State → Accepted
+     ▼
+┌─────────────────┐
+│  User B         │
+│  (Notified)     │
+└─────────────────┘
+```
+
+### 3. Post Creation and Interaction Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. create_post(content)
+     ▼
+┌─────────────────┐
+│SocialNetworkMgr │
+└────┬────────────┘
+     │
+     │ 2. post_service.create_post()
+     ▼
+┌─────────────────┐
+│  PostService    │
+└────┬────────────┘
+     │
+     │ 3. Create Post
+     │ 4. Store in repository
+     │ 5. Add to user's posts
+     ▼
+┌─────────────────┐
+│     Post        │
+└────┬────────────┘
+     │
+     │ 6. User B likes/comments
+     │ 7. notify_observers()
+     ▼
+┌─────────────────┐
+│  Post Author    │
+│  (Notified)     │
+└─────────────────┘
+```
+
+### 4. Feed Generation Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. get_feed()
+     ▼
+┌─────────────────┐
+│SocialNetworkMgr │
+└────┬────────────┘
+     │
+     │ 2. feed_service.generate_feed()
+     ▼
+┌─────────────────┐
+│  FeedService    │
+└────┬────────────┘
+     │
+     │ 3. Get user's connections
+     │ 4. Collect friend posts
+     │ 5. Apply strategy
+     ▼
+┌─────────────────┐
+│ FeedStrategy    │
+│  (Chronological)│
+└────┬────────────┘
+     │
+     │ 6. Sort and filter
+     │ 7. Return top N posts
+     ▼
+┌─────────────────┐
+│  Feed (Posts)   │
+└─────────────────┘
+```
+
+### 5. Complete System Interaction Flow
+
+```
+┌──────────────┐
+│   Client     │
+│  (run.py)    │
+└──────┬───────┘
+       │
+       │ All Operations
+       ▼
+┌─────────────────────────────────────┐
+│   SocialNetworkManager               │
+│   (Singleton/Facade)                 │
+│  - User Management                  │
+│  - Post Management                  │
+│  - Feed Generation                  │
+└──────┬──────────────────────────────┘
+       │
+       ├──────────────────┬──────────────────┐
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│ UserService │  │ PostService │  │ FeedService │
+│             │  │             │  │             │
+└─────────────┘  └─────────────┘  └─────────────┘
+       │                  │                  │
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   Users     │  │   Posts     │  │   Feeds     │
+│  - Profiles │  │  - Likes    │  │  - Strategy │
+│  - Connections│ │  - Comments │ │             │
+└─────────────┘  └─────────────┘  └─────────────┘
+       │
+       │
+       ▼
+┌─────────────────────────────────────┐
+│         Pattern Layer                │
+│  - ConnectionState (State)            │
+│  - FeedStrategy (Strategy)            │
+│  - CommentableObserver (Observer)    │
+│  - ProfileComponent (Composite)      │
+└─────────────────────────────────────┘
+```
+
+## 📋 Entity Attributes Summary
+
+### User Entity
+
+- `id`: Unique identifier (UUID)
+- `name`: User's full name
+- `email`: User's email address
+- `profile`: Reference to Profile
+- `connections`: List of Connection objects
+- `posts`: List of Post objects
+- `notifications`: List of Notification objects
+
+### Profile Entity
+
+- `bio`: User biography
+- `location`: User location
+- `experience`: List of Experience objects
+- `education`: List of Education objects
+- `skills`: List of Skill objects
+
+### Connection Entity
+
+- `id`: Unique identifier (UUID)
+- `user1`: First user in connection
+- `user2`: Second user in connection
+- `state`: ConnectionState object
+- `status`: ConnectionStatus (NOT_REQUESTED, PENDING, ACCEPTED, REJECTED)
+
+### Post Entity
+
+- `id`: Unique identifier (UUID)
+- `author`: User who created the post
+- `content`: Post content
+- `timestamp`: When post was created
+- `likes`: List of Like objects
+- `comments`: List of Comment objects
+- `shares`: List of Share objects
+
+### Like Entity
+
+- `id`: Unique identifier (UUID)
+- `user`: User who liked
+- `post`: Post that was liked
+- `timestamp`: When like was created
+
+### Comment Entity
+
+- `id`: Unique identifier (UUID)
+- `user`: User who commented
+- `post`: Post that was commented on
+- `content`: Comment content
+- `timestamp`: When comment was created
+
+### Notification Entity
+
+- `id`: Unique identifier (UUID)
+- `user`: User to notify
+- `type`: NotificationType
+- `message`: Notification message
+- `timestamp`: When notification was created
+
 ## 🔄 Data Flow
 
 ### System Architecture Overview

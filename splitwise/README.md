@@ -192,6 +192,394 @@ class SplitWiseService:
 - **Observers**: Event handling and notifications
 - **Builders**: Complex object construction
 
+## 📊 Entity Relationship Diagram
+
+### Core Entities and Relationships
+
+```
+┌─────────────┐
+│    User     │
+│─────────────│
+│ id          │
+│ name        │
+│ email       │
+│ balance_sheet│
+│ groups      │
+└──────┬──────┘
+       │
+       │ 1..* (member of)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│              Group                  │
+│─────────────────────────────────────│
+│ id                                  │
+│ name                                │
+│ members (List<User>)                │
+│ expenses (List<Expense>)            │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (contains)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│            Expense                  │
+│─────────────────────────────────────│
+│ id                                  │
+│ description                         │
+│ amount                              │
+│ paid_by (User)                      │
+│ participants (List<User>)           │
+│ split_strategy (SplitStrategy)      │
+│ split_values (List<Float>)          │
+│ created_at                          │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (generates)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│            Split                    │
+│─────────────────────────────────────│
+│ user (User)                         │
+│ amount                              │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│         Transaction                 │
+│─────────────────────────────────────│
+│ id                                  │
+│ from_user (User)                    │
+│ to_user (User)                      │
+│ amount                              │
+│ status (TransactionStatus)          │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│        BalanceSheet                 │
+│─────────────────────────────────────│
+│ owner (User)                        │
+│ balances (Dict<User, Float>)        │
+└─────────────────────────────────────┘
+```
+
+### Entity Relationships
+
+1. **User ↔ Group** (Many-to-Many)
+
+   - A User can be a member of multiple Groups
+   - A Group can have multiple Users as members
+   - Users maintain a list of groups they belong to
+
+2. **Group ↔ Expense** (One-to-Many)
+
+   - A Group can have multiple Expenses
+   - Each Expense belongs to one Group
+   - Expenses are tracked per group
+
+3. **Expense ↔ User** (Many-to-Many)
+
+   - An Expense has one `paid_by` User
+   - An Expense has multiple `participants` (Users)
+   - Users can participate in multiple expenses
+
+4. **Expense ↔ Split** (One-to-Many)
+
+   - An Expense generates multiple Splits (one per participant)
+   - Each Split belongs to one Expense
+   - Split represents how much each participant owes
+
+5. **User ↔ BalanceSheet** (One-to-One)
+
+   - Each User has one BalanceSheet
+   - BalanceSheet tracks balances with other users
+   - Thread-safe balance adjustments
+
+6. **User ↔ Transaction** (Many-to-Many)
+
+   - A User can be `from_user` in multiple Transactions
+   - A User can be `to_user` in multiple Transactions
+   - Transactions represent simplified debts between users
+
+7. **Expense ↔ SplitStrategy** (One-to-One)
+
+   - Each Expense uses one SplitStrategy
+   - Strategy determines how splits are calculated
+   - Supports Equal, Exact, and Percentage strategies
+
+8. **Observer Pattern Relationships**
+   - Group implements `GroupSubject` - notifies on member changes
+   - Expense implements `ExpenseSubject` - notifies on expense creation
+   - Transaction implements `TransactionSubject` - notifies on status changes
+   - User implements `Observer` - receives notifications
+
+## 🔄 Data Flow Diagrams
+
+### 1. Expense Creation Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. ExpenseBuilder.build()
+     ▼
+┌─────────────────┐
+│ ExpenseBuilder  │
+│   (Builder)     │
+└────┬────────────┘
+     │
+     │ 2. Create Expense
+     ▼
+┌─────────────────┐
+│   Expense       │
+│  - Add observers│
+│  - Set strategy │
+└────┬────────────┘
+     │
+     │ 3. add_expense_to_group()
+     ▼
+┌─────────────────┐
+│ SplitWiseService│
+└────┬────────────┘
+     │
+     │ 4. group.add_expense()
+     ▼
+┌─────────────────┐
+│     Group       │
+└────┬────────────┘
+     │
+     │ 5. Calculate splits
+     │ 6. Update balance sheets
+     ▼
+┌─────────────────┐
+│  BalanceSheet   │
+│  (per User)     │
+└────┬────────────┘
+     │
+     │ 7. notify_observers()
+     ▼
+┌─────────────────┐
+│  Participants   │
+│  (Observers)    │
+└─────────────────┘
+```
+
+### 2. Balance Sheet Update Flow
+
+```
+┌─────────────────┐
+│     Expense     │
+└────┬────────────┘
+     │
+     │ 1. get_splits()
+     ▼
+┌─────────────────┐
+│ SplitStrategy   │
+│  (Strategy)     │
+└────┬────────────┘
+     │
+     │ 2. Calculate splits
+     ▼
+┌─────────────────┐
+│  List<Split>    │
+└────┬────────────┘
+     │
+     │ 3. For each split
+     ▼
+┌─────────────────┐
+│     Split       │
+│  - user         │
+│  - amount       │
+└────┬────────────┘
+     │
+     │ 4. adjust_balance()
+     ▼
+┌─────────────────┐
+│  BalanceSheet   │
+│  (Participant)  │
+└────┬────────────┘
+     │
+     │ 5. Lock & update
+     │ 6. adjust_balance()
+     ▼
+┌─────────────────┐
+│  BalanceSheet   │
+│  (Paid By)      │
+└─────────────────┘
+```
+
+### 3. Debt Simplification Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. simplify_expenses()
+     ▼
+┌─────────────────┐
+│     Group       │
+└────┬────────────┘
+     │
+     │ 2. Calculate net balances
+     │    from all expenses
+     ▼
+┌─────────────────┐
+│  Net Balances   │
+│  (Dict<User,    │
+│   Float>)       │
+└────┬────────────┘
+     │
+     │ 3. Create heaps
+     │    (creditors & debtors)
+     ▼
+┌─────────────────┐
+│  Max Heaps      │
+│  - Creditors    │
+│  - Debtors      │
+└────┬────────────┘
+     │
+     │ 4. Match creditors
+     │    with debtors
+     ▼
+┌─────────────────┐
+│  Transactions   │
+│  (Simplified)   │
+└─────────────────┘
+```
+
+### 4. Settlement Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. settle_up(user1, user2, amount)
+     ▼
+┌─────────────────┐
+│ SplitWiseService│
+└────┬────────────┘
+     │
+     │ 2. user_service.settle_up()
+     ▼
+┌─────────────────┐
+│  UserService    │
+└────┬────────────┘
+     │
+     │ 3. Create Transaction
+     │ 4. Update balance sheets
+     ▼
+┌─────────────────┐
+│  Transaction    │
+│  - from_user    │
+│  - to_user      │
+│  - amount       │
+└────┬────────────┘
+     │
+     │ 5. adjust_balance()
+     │    (both users)
+     ▼
+┌─────────────────┐
+│  BalanceSheet   │
+│  (Updated)      │
+└────┬────────────┘
+     │
+     │ 6. notify_observers()
+     ▼
+┌─────────────────┐
+│  Users Notified │
+└─────────────────┘
+```
+
+### 5. Complete System Interaction Flow
+
+```
+┌──────────────┐
+│   Client     │
+│  (run.py)    │
+└──────┬───────┘
+       │
+       │ All Operations
+       ▼
+┌─────────────────────────────────────┐
+│      SplitWiseService               │
+│      (Facade Pattern)               │
+│  - User Management                  │
+│  - Group Management                 │
+│  - Expense Management               │
+└──────┬──────────────────────────────┘
+       │
+       ├──────────────────┬──────────────────┐
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│ UserService │  │GroupService │  │   Group     │
+│             │  │             │  │             │
+└─────────────┘  └─────────────┘  └─────────────┘
+       │                  │                  │
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│    User     │  │   Expense   │  │ Transaction │
+│             │  │             │  │             │
+└─────────────┘  └─────────────┘  └─────────────┘
+       │                  │                  │
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│BalanceSheet │  │SplitStrategy│  │  Observer   │
+│             │  │             │  │  Pattern    │
+└─────────────┘  └─────────────┘  └─────────────┘
+```
+
+## 📋 Entity Attributes Summary
+
+### User Entity
+
+- `id`: Unique identifier (UUID)
+- `name`: User's full name
+- `email`: User's email address
+- `balance_sheet`: BalanceSheet object for tracking debts
+- `groups`: List of groups user belongs to
+
+### Group Entity
+
+- `id`: Unique identifier (UUID)
+- `name`: Group name
+- `members`: List of User objects in the group
+- `expenses`: List of Expense objects in the group
+
+### Expense Entity
+
+- `id`: Unique identifier (UUID)
+- `description`: Expense description
+- `amount`: Total expense amount
+- `paid_by`: User who paid for the expense
+- `participants`: List of Users participating in the expense
+- `split_strategy`: SplitStrategy used for calculation
+- `split_values`: Optional list of values for percentage/exact splits
+- `created_at`: Expense creation timestamp
+
+### Transaction Entity
+
+- `id`: Unique identifier (UUID)
+- `from_user`: User who owes money
+- `to_user`: User who is owed money
+- `amount`: Transaction amount
+- `status`: Transaction status (PENDING, COMPLETED)
+
+### Split Entity
+
+- `user`: User who owes this split amount
+- `amount`: Amount owed by the user
+
+### BalanceSheet Entity
+
+- `owner`: User who owns this balance sheet
+- `balances`: Dictionary mapping User to balance amount (positive = owed to owner, negative = owner owes)
+
 ## 📁 Project Structure
 
 ```

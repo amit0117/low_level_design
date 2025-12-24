@@ -233,6 +233,420 @@ The demo script tests:
 - ✅ Concurrent access
 - ✅ Statistics and reporting
 
+## 📊 Entity Relationship Diagram
+
+### Core Entities and Relationships
+
+```
+┌─────────────────────────────────────┐
+│      CricInfoService                │
+│─────────────────────────────────────│
+│ (Singleton)                         │
+│ - match_service                     │
+│ - player_service                    │
+│ - commentary_service                │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (manages)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│            Match                    │
+│─────────────────────────────────────│
+│ id                                  │
+│ team1 (Team)                        │
+│ team2 (Team)                        │
+│ match_type (MatchType)              │
+│ innings (List<Inning>)              │
+│ current_state (MatchState)          │
+│ current_status (MatchStatus)        │
+│ winner (Team)                       │
+│ observers (List<Observer>)          │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (has)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│           Inning                    │
+│─────────────────────────────────────│
+│ batting_team (Team)                 │
+│ bowling_team (Team)                 │
+│ balls (List<Ball>)                  │
+│ total_runs                          │
+│ wickets_fallen                      │
+│ overs_bowled                        │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (contains)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│            Ball                     │
+│─────────────────────────────────────│
+│ id                                  │
+│ ball_number                         │
+│ bowled_by (Player)                  │
+│ faced_by (Player)                   │
+│ runs_scored                         │
+│ wicket (Wicket)                     │
+│ extra_type (ExtraType)              │
+│ commentary                          │
+└──────┬──────────────────────────────┘
+       │
+       │ 0..1 (may have)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│           Wicket                    │
+│─────────────────────────────────────│
+│ wicket_type (WicketType)            │
+│ batsman (Player)                    │
+│ bowler (Player)                     │
+│ fielder (Player)                    │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│            Team                     │
+│─────────────────────────────────────│
+│ name                                │
+│ players (List<Player>)              │
+└──────┬──────────────────────────────┘
+       │
+       │ 1..* (has)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│           Player                    │
+│─────────────────────────────────────│
+│ id                                  │
+│ name                                │
+│ country                             │
+│ role (PlayerRole)                   │
+│ stats (PlayerStats)                 │
+└──────┬──────────────────────────────┘
+       │
+       │ 1 (has)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│        PlayerStats                  │
+│─────────────────────────────────────│
+│ runs_scored                         │
+│ balls_faced                         │
+│ wickets_taken                       │
+│ balls_bowled                        │
+│ runs_conceded                       │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│        MatchState                   │
+│─────────────────────────────────────│
+│ (Abstract)                          │
+└──────┬──────────────────────────────┘
+       │
+       │ Inheritance
+       │
+       ├──────────────┬──────────────┬
+       ▼              ▼              ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│ Scheduled   │ │   Live      │ │  Finished   │
+│   State     │ │   State     │ │   State     │
+└─────────────┘ └─────────────┘ └─────────────┘
+```
+
+### Entity Relationships
+
+1. **CricInfoService ↔ Match** (One-to-Many)
+
+   - Service manages multiple Matches
+   - Matches stored in MatchService
+
+2. **Match ↔ Team** (Many-to-Many)
+
+   - A Match has two Teams (team1, team2)
+   - A Team can play in multiple Matches
+
+3. **Match ↔ Inning** (One-to-Many)
+
+   - A Match has multiple Innings
+   - Each Inning belongs to one Match
+
+4. **Inning ↔ Team** (Many-to-One, Two references)
+
+   - An Inning has one batting_team
+   - An Inning has one bowling_team
+
+5. **Inning ↔ Ball** (One-to-Many)
+
+   - An Inning contains multiple Balls
+   - Each Ball belongs to one Inning
+
+6. **Ball ↔ Player** (Many-to-One, Two references)
+
+   - A Ball has one bowled_by Player
+   - A Ball has one faced_by Player
+
+7. **Ball ↔ Wicket** (One-to-One, Optional)
+
+   - A Ball may have one Wicket (if wicket falls)
+   - A Wicket belongs to one Ball
+
+8. **Wicket ↔ Player** (Many-to-One, Multiple references)
+
+   - A Wicket has one batsman Player
+   - A Wicket has one bowler Player
+   - A Wicket may have one fielder Player
+
+9. **Team ↔ Player** (One-to-Many)
+
+   - A Team has multiple Players
+   - A Player belongs to one Team (per match)
+
+10. **Player ↔ PlayerStats** (One-to-One)
+
+    - Each Player has one PlayerStats
+    - Stats track runs, wickets, etc.
+
+11. **Match ↔ MatchState** (One-to-One)
+
+    - Each Match has one current State
+    - State transitions: Scheduled → Live → Finished
+
+12. **Observer Pattern Relationships**
+
+    - Match implements `MatchSubject`
+    - Observers: ScorecardDisplay, CommentaryManager, UserNotifier
+    - Observers notified on match events
+
+13. **Builder Pattern Relationships**
+    - BallBuilder creates Ball objects
+    - WicketBuilder creates Wicket objects
+
+## 🔄 Data Flow Diagrams
+
+### 1. Match Creation Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. create_match(team1, team2, type)
+     ▼
+┌─────────────────┐
+│ CricInfoService │
+└────┬────────────┘
+     │
+     │ 2. match_service.create_match()
+     ▼
+┌─────────────────┐
+│  MatchService   │
+└────┬────────────┘
+     │
+     │ 3. Create Match
+     │ 4. Initialize Inning
+     │ 5. Set state to Scheduled
+     ▼
+┌─────────────────┐
+│     Match       │
+│  - Teams        │
+│  - Innings      │
+│  - State        │
+└─────────────────┘
+```
+
+### 2. Ball Processing Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. BallBuilder.build()
+     ▼
+┌─────────────────┐
+│   BallBuilder   │
+│   (Builder)     │
+└────┬────────────┘
+     │
+     │ 2. Create Ball
+     ▼
+┌─────────────────┐
+│      Ball       │
+└────┬────────────┘
+     │
+     │ 3. process_ball(match_id, ball)
+     ▼
+┌─────────────────┐
+│ CricInfoService │
+└────┬────────────┘
+     │
+     │ 4. match_service.process_ball()
+     ▼
+┌─────────────────┐
+│     Match       │
+└────┬────────────┘
+     │
+     │ 5. current_state.process_ball()
+     ▼
+┌─────────────────┐
+│  MatchState     │
+│  (LiveState)    │
+└────┬────────────┘
+     │
+     │ 6. Update inning
+     │ 7. Update stats
+     │ 8. notify_observers()
+     ▼
+┌─────────────────┐
+│   Observers     │
+│  (Notified)     │
+└─────────────────┘
+```
+
+### 3. Match State Transition Flow
+
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. start_match(match_id)
+     ▼
+┌─────────────────┐
+│ CricInfoService │
+└────┬────────────┘
+     │
+     │ 2. match_service.start_match()
+     ▼
+┌─────────────────┐
+│     Match       │
+└────┬────────────┘
+     │
+     │ 3. set_state(LiveState())
+     │ 4. set_status(LIVE)
+     ▼
+┌─────────────────┐
+│   LiveState     │
+└────┬────────────┘
+     │
+     │ 5. Process balls
+     │ 6. Check match end conditions
+     │ 7. end_match()
+     ▼
+┌─────────────────┐
+│ FinishedState   │
+└─────────────────┘
+```
+
+### 4. Complete System Interaction Flow
+
+```
+┌──────────────┐
+│   Client     │
+│  (run.py)    │
+└──────┬───────┘
+       │
+       │ All Operations
+       ▼
+┌─────────────────────────────────────┐
+│      CricInfoService                │
+│      (Singleton/Facade)             │
+│  - Match Management                 │
+│  - Player Management                │
+│  - Commentary Management            │
+└──────┬──────────────────────────────┘
+       │
+       ├──────────────────┬──────────────────┐
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│ MatchService│  │PlayerService│  │Commentary   │
+│             │  │             │  │Service      │
+└─────────────┘  └─────────────┘  └─────────────┘
+       │                  │                  │
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   Matches   │  │   Players   │  │ Commentary  │
+│  - Teams    │  │  - Stats    │  │  - Updates  │
+│  - Innings  │  │             │  │             │
+│  - Balls    │  │             │  │             │
+└─────────────┘  └─────────────┘  └─────────────┘
+       │
+       │
+       ▼
+┌─────────────────────────────────────┐
+│         Observer Layer              │
+│  - ScorecardDisplay                 │
+│  - CommentaryManager                │
+│  - UserNotifier                     │
+└─────────────────────────────────────┘
+```
+
+## 📋 Entity Attributes Summary
+
+### Match Entity
+
+- `id`: Unique identifier (UUID)
+- `team1`: First team
+- `team2`: Second team
+- `match_type`: MatchType (T20, ODI, TEST)
+- `innings`: List of Inning objects
+- `current_state`: MatchState object
+- `current_status`: MatchStatus (SCHEDULED, LIVE, FINISHED)
+- `winner`: Winning Team (if finished)
+- `observers`: List of Observer objects
+
+### Team Entity
+
+- `name`: Team name
+- `players`: List of Player objects
+
+### Player Entity
+
+- `id`: Unique identifier (UUID)
+- `name`: Player name
+- `country`: Player country
+- `role`: PlayerRole (BATSMAN, BOWLER, ALL_ROUNDER)
+- `stats`: PlayerStats object
+
+### PlayerStats Entity
+
+- `runs_scored`: Total runs scored
+- `balls_faced`: Total balls faced
+- `wickets_taken`: Total wickets taken
+- `balls_bowled`: Total balls bowled
+- `runs_conceded`: Total runs conceded
+
+### Inning Entity
+
+- `batting_team`: Team batting
+- `bowling_team`: Team bowling
+- `balls`: List of Ball objects
+- `total_runs`: Runs scored in inning
+- `wickets_fallen`: Wickets lost
+- `overs_bowled`: Overs completed
+
+### Ball Entity
+
+- `id`: Unique identifier (UUID)
+- `ball_number`: Ball number in over
+- `bowled_by`: Player who bowled
+- `faced_by`: Player who faced
+- `runs_scored`: Runs from this ball
+- `wicket`: Wicket object (if wicket fell)
+- `extra_type`: ExtraType (if any)
+- `commentary`: Commentary text
+
+### Wicket Entity
+
+- `wicket_type`: WicketType (BOWLED, CAUGHT, LBW, etc.)
+- `batsman`: Player who got out
+- `bowler`: Player who took wicket
+- `fielder`: Player who caught (if applicable)
+
 ## 🔄 Concurrent Access
 
 The system demonstrates thread-safe operations using `ThreadPoolExecutor`:
