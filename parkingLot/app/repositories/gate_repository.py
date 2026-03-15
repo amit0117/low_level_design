@@ -15,10 +15,10 @@ class GateRepository:
         return cls._instance
 
     def __init__(self):
-        if hasattr(self, "gates"):
+        if hasattr(self, "entry_gates") and hasattr(self, "exit_gates"):
             return
-        self.entry_gates: dict[int, EntryGate] = dict()
-        self.exit_gates: dict[int, ExitGate] = dict()
+        self.entry_gates: dict[int, EntryGate] = {}
+        self.exit_gates: dict[int, ExitGate] = {}
 
     @classmethod
     def get_instance(cls: Type["GateRepository"]) -> "GateRepository":
