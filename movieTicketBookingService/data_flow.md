@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Movie Ticket Booking Service - Low Level Design
-"""
+# Movie Ticket Booking Service
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     User[User] -->|searches via| SearchStrategy{Show Search Strategy}
@@ -37,9 +36,9 @@ graph TD
     PaymentStrategy -->|cash| CashPayment[CashPayment]
     PaymentStrategy -->|credit card| CreditCardPayment[CreditCardPayment]
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor User
@@ -95,14 +94,3 @@ sequenceDiagram
     Note over Booking: State = CancelledState
     BookingService->>SeatLockMgr: Release seats
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

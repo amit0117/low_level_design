@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Airline Management Service - Low Level Design
-"""
+# Airline Management Service
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     Facade[AirlineManagementFacade] -->|manages| FlightRepo[FlightRepository]
@@ -55,9 +54,9 @@ graph TD
     FlightObserver -->|notifies| Passenger
     BookingObserver -->|notifies| Passenger
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor Passenger
@@ -124,14 +123,3 @@ sequenceDiagram
         Facade-->>Passenger: Booking failed
     end
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

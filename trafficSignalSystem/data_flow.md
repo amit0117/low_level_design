@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Traffic Signal System - Low Level Design
-"""
+# Traffic Signal System
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     TrafficController[TrafficController] -->|manages| Intersection[Intersection]
@@ -31,9 +30,9 @@ graph TD
     SignalPhase -->|determines| ActiveRoads[Active Green Roads]
     SignalPhase -->|sets duration| Duration[Phase Duration]
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     participant Controller as TrafficController
@@ -92,14 +91,3 @@ sequenceDiagram
         Phase->>WestLight: Set RED
     end
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Coffee Vending Machine - Low Level Design
-"""
+# Coffee Vending Machine
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     User[User] -->|inserts coins| VendingMachine[VendingMachine]
@@ -37,9 +36,9 @@ graph TD
     Inventory -->|observed by| InventoryObserver[InventoryObserver]
     InventoryObserver -->|alerts| Admin[Admin]
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor User
@@ -92,14 +91,3 @@ sequenceDiagram
         Note over VM: State = ReadyState
     end
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

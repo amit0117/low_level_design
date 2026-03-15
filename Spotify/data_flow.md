@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Spotify (Music Streaming) - Low Level Design
-"""
+# Spotify (Music Streaming)
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     User[User] -->|built via| UserBuilder[UserBuilder]
@@ -44,9 +43,9 @@ graph TD
 
     User -->|searches via| SearchService[SearchService]
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor User
@@ -99,14 +98,3 @@ sequenceDiagram
     User->>Player: StopCommand
     Note over Player: Playback stopped
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

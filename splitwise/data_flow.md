@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Splitwise - Low Level Design
-"""
+# Splitwise
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     User[User] -->|creates/joins| Group[Group]
@@ -28,9 +27,9 @@ graph TD
     Transaction -->|to| Creditor[Creditor/User]
     Transaction -->|updates| Balance
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor User1 as User A (Payer)
@@ -82,14 +81,3 @@ sequenceDiagram
     Balance-->>User3: Debt settled
     Balance-->>User1: All debts cleared
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

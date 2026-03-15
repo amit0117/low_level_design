@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Online Auction System - Low Level Design
-"""
+# Online Auction System
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     Seller[Seller/User] -->|creates| Auction[Auction]
@@ -34,9 +33,9 @@ graph TD
     AuctionObserver -->|updates| Buyer
     AuctionObserver -->|updates| Seller
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor Seller
@@ -87,14 +86,3 @@ sequenceDiagram
     Mediator->>Mediator: Process payment
     Mediator->>Mediator: Transfer item to winner
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

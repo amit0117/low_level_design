@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Restaurant Management Service - Low Level Design
-"""
+# Restaurant Management Service
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     Customer[Customer] -->|reserves| Table[Table]
@@ -46,9 +45,9 @@ graph TD
     PaymentStrategy -->|credit card| CreditCard[CreditCardPayment]
     PaymentStrategy -->|UPI| UpiPayment[UpiPayment]
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor Customer
@@ -104,14 +103,3 @@ sequenceDiagram
 
     Inventory->>Manager: Alert if stock low
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Parking Lot - Low Level Design
-"""
+# Parking Lot
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     Vehicle[Vehicle] -->|arrives at| EntryGate[Entry Gate]
@@ -40,9 +39,9 @@ graph TD
 
     Ticket -->|has| TicketStatus[ParkingTicketStatus]
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor Driver
@@ -93,14 +92,3 @@ sequenceDiagram
     Note over ParkingSpot: Status = AVAILABLE
     ExitGate-->>Driver: Gate opens, vehicle exits
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

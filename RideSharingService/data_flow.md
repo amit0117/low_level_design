@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Ride Sharing Service - Low Level Design
-"""
+# Ride Sharing Service
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     Rider[Rider] -->|requests ride| Ride[Ride]
@@ -39,9 +38,9 @@ graph TD
     Ride -->|observed by| RideObserver[RideObserver]
     Driver -->|observed by| DriverObserver[DriverObserver]
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor Rider
@@ -87,14 +86,3 @@ sequenceDiagram
     System->>Rider: Ride summary & receipt
     System->>Driver: Earnings summary
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

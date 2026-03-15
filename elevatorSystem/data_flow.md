@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Elevator System - Low Level Design
-"""
+# Elevator System
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     Passenger[Passenger] -->|creates| Request[Request]
@@ -32,9 +31,9 @@ graph TD
 
     Passenger -->|enters/exits| Elevator
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor Passenger
@@ -81,14 +80,3 @@ sequenceDiagram
         ElevatorService->>Elevator: Continue to next floor
     end
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

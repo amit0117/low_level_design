@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Snake and Ladder Game - Low Level Design
-"""
+# Snake and Ladder Game
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     SnakeAndLadderGame[SnakeAndLadderGame] -->|creates| Game[Game]
@@ -31,9 +30,9 @@ graph TD
     Game -->|notifies| GameObserver[GameObserver]
     GameObserver -->|updates| Players
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor Player1 as Player 1
@@ -87,14 +86,3 @@ sequenceDiagram
     GameObserver-->>Player1: Game result
     GameObserver-->>Player2: Game result
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

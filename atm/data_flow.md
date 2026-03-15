@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for ATM Machine - Low Level Design
-"""
+# ATM Machine
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     Customer[Customer] -->|inserts| Card[Card]
@@ -40,9 +39,9 @@ graph TD
     CashDispenser -->|low cash alert| Admin[Admin Observer]
     Admin -->|monitors| CashDispenser
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor Customer
@@ -100,14 +99,3 @@ sequenceDiagram
     ATM->>CardReader: Eject card
     Note over ATM: State = IdleState
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

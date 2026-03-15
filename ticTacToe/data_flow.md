@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Tic-Tac-Toe - Low Level Design
-"""
+# Tic-Tac-Toe
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     TicTacToeGame[TicTacToeGame] -->|creates| Game[Game Subject]
@@ -26,9 +25,9 @@ graph TD
     Game -->|observed by| GameObserver[GameObserver]
     GameObserver -->|notifies| Players
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor Player1 as Player 1 (Human - X)
@@ -81,14 +80,3 @@ sequenceDiagram
         end
     end
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

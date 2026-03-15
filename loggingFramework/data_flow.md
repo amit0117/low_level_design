@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Logging Framework - Low Level Design
-"""
+# Logging Framework
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     Application[Application] -->|uses| Logger[Logger]
@@ -32,9 +31,9 @@ graph TD
     AppenderStrategy -->|file| FileAppender[FileAppender]
     AppenderStrategy -->|database| DatabaseAppender[DatabaseAppender]
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor Application
@@ -83,14 +82,3 @@ sequenceDiagram
     Handler->>Formatter: Format error message
     Handler->>Appender: Output to all configured appenders
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

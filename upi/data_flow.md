@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for UPI (Unified Payments Interface) - Low Level Design
-"""
+# UPI (Unified Payments Interface)
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     User[User] -->|has| Account[Account Subject]
@@ -46,9 +45,9 @@ graph TD
 
     Account -->|notified by| AccountObserver
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor Sender as Sender (User)
@@ -103,14 +102,3 @@ sequenceDiagram
     Sender->>CommandInvoker: Undo last payment (if supported)
     CommandInvoker->>CommandInvoker: Reverse ExecutePaymentCommand
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Online Stock Exchange - Low Level Design
-"""
+# Online Stock Exchange
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     User[User] -->|owns| Account[Account]
@@ -37,9 +36,9 @@ graph TD
     StockObserver -->|notifies| User
     StockExchange -->|manages| Stock
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor User
@@ -86,14 +85,3 @@ sequenceDiagram
     Stock->>User: Notify price change
     Note over User: Receives real-time updates
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

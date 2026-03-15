@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Pub-Sub Service - Low Level Design
-"""
+# Pub-Sub Service
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     Publisher[Publisher] -->|publishes| Message[Message]
@@ -42,9 +41,9 @@ graph TD
     Message -->|observed by| MessageObserver[MessageObserver]
     MessageObserver -->|notifies| MessageSubscriber
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor Publisher
@@ -100,14 +99,3 @@ sequenceDiagram
         Subscriber->>Broker: Acknowledge on success
     end
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

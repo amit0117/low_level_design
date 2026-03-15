@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Online Shopping Service - Low Level Design
-"""
+# Online Shopping Service
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     User[User] -->|has| Account[Account]
@@ -41,9 +40,9 @@ graph TD
     Order -->|observed by| CustomerObserver[CustomerOrderObserver]
     Order -->|observed by| AdminObserver[AdminOrderObserver]
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor User
@@ -100,14 +99,3 @@ sequenceDiagram
         Note over Order: State = CancelledState
     end
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

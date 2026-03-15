@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for CricInfo (Cricket Management) - Low Level Design
-"""
+# CricInfo (Cricket Management)
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     CricInfoService[CricInfoService] -->|manages| MatchService[MatchService]
@@ -38,9 +37,9 @@ graph TD
     MatchObserver -->|notifications| UserNotifier[UserNotifier]
     MatchObserver -->|commentary| CommentaryManager[CommentaryManager]
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor Admin
@@ -100,14 +99,3 @@ sequenceDiagram
     Viewer->>Scorecard: View full scorecard
     Scorecard-->>Viewer: Detailed match stats
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)

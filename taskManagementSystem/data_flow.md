@@ -1,8 +1,7 @@
-"""
-Mermaid Diagrams for Task Management System - Low Level Design
-"""
+# Task Management System
 
-DATA_FLOW_DIAGRAM = """
+## Data Flow Diagram
+
 ```mermaid
 graph TD
     User[User] -->|creates via| TaskBuilder[TaskBuilder]
@@ -35,9 +34,9 @@ graph TD
     SearchStrategy -->|by status| StatusSearch[TaskSearchByStatusStrategy]
     SearchStrategy -->|by tags| TagsSearch[TaskSearchByTagsStrategy]
 ```
-"""
 
-USER_FLOW_DIAGRAM = """
+## User Flow Diagram
+
 ```mermaid
 sequenceDiagram
     actor Creator as Task Creator
@@ -90,14 +89,3 @@ sequenceDiagram
     Search->>TaskRepo: Apply filters
     TaskRepo-->>Creator: Filtered results
 ```
-"""
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("DATA FLOW DIAGRAM")
-    print("=" * 60)
-    print(DATA_FLOW_DIAGRAM)
-    print("=" * 60)
-    print("USER FLOW DIAGRAM")
-    print("=" * 60)
-    print(USER_FLOW_DIAGRAM)
