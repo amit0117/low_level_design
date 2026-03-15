@@ -1,6 +1,6 @@
 # 🎯 Low Level Design (LLD) - Complete Implementation Collection
 
-A comprehensive collection of **25+ production-ready Low Level Design implementations** demonstrating advanced design patterns, clean architecture, SOLID principles, and enterprise-level software engineering practices.
+A comprehensive collection of **25+ Low Level Design implementations** demonstrating advanced design patterns, clean architecture, SOLID principles, and enterprise-level software engineering practices.
 
 ## 📋 Table of Contents
 
@@ -16,7 +16,7 @@ A comprehensive collection of **25+ production-ready Low Level Design implementa
 
 ## 🎯 Overview
 
-This repository contains **complete, production-ready implementations** of popular Low Level Design problems commonly asked in software engineering interviews at companies like Google, Amazon, Microsoft, Meta, and more.
+This repository contains **complete, production-ready implementations** of popular Low Level Design problems commonly asked in software engineering interviews.
 
 Each project demonstrates:
 - ✅ **Clean Architecture** - Separation of concerns, layered architecture
@@ -209,60 +209,57 @@ projectName/
 └── README.md            # Project documentation
 ```
 
-## 📚 Learning Path
+## 📚 Learning Path (For LLD)
 
-### For Beginners
 
-1. **Start with Easy Projects**
+1.1 **Start with Easy Projects**
    - Parking Lot
    - Coffee Vending Machine
    - Tic Tac Toe
    - Task Management System
 
-2. **Learn Basic Patterns**
+1.2 **Learn Basic Patterns**
    - Singleton
    - Factory
    - Strategy
    - Observer
 
-3. **Understand SOLID Principles**
+1.3 **Understand SOLID Principles**
    - Read code comments
    - See how principles are applied
    - Try modifying code to see why design matters
 
-### For Intermediate Developers
 
-1. **Tackle Medium Projects**
+2.1. **Tackle Medium Projects**
    - ATM System
    - Library Management
    - Elevator System
    - Pub-Sub System
 
-2. **Explore Advanced Patterns**
+2.2. **Explore Advanced Patterns**
    - State Pattern
    - Command Pattern
    - Chain of Responsibility
    - Repository Pattern
 
-3. **Study Architecture**
+2.3. **Study Architecture**
    - Clean Architecture layers
    - Dependency Injection
    - Service Layer patterns
 
-### For Advanced Developers
 
-1. **Master Hard Projects**
+3.1. **Master Hard Projects**
    - Movie Ticket Booking
    - Splitwise
    - UPI Payment System
    - Ride Sharing Service
 
-2. **Deep Dive into Complex Patterns**
+3.2. **Deep Dive into Complex Patterns**
    - Abstract Factory
    - Mediator
    - Multiple pattern combinations
 
-3. **Optimize and Extend**
+3.3. **Optimize and Extend**
    - Add new features
    - Optimize performance
    - Add thread safety
@@ -338,14 +335,6 @@ Contributions are welcome! Here's how you can help:
 5. Add type hints
 6. Write clean, readable code
 
-## 📝 Notes
-
-- All projects are **production-ready** implementations
-- Code follows **Python best practices** and **PEP 8** guidelines
-- Each project includes **comprehensive documentation**
-- **Type hints** are used throughout for better code clarity
-- Projects demonstrate **real-world** design decisions and trade-offs
-
 ## 🎓 Resources
 
 ### Recommended Reading
@@ -357,7 +346,6 @@ Contributions are welcome! Here's how you can help:
 ### Online Resources
 
 - [Refactoring Guru](https://refactoring.guru/) - Excellent design pattern explanations
-- [Design Patterns Catalog](https://refactoring.guru/design-patterns/catalog)
 - [SOLID Principles](https://en.wikipedia.org/wiki/SOLID)
 
 ## 📊 Statistics
@@ -371,7 +359,6 @@ Contributions are welcome! Here's how you can help:
 ## 🏆 Success Stories
 
 This repository helps you:
-- ✅ **Ace LLD Interviews** at FAANG and top tech companies
 - ✅ **Write Better Code** following industry best practices
 - ✅ **Understand Design Patterns** through real-world implementations
 - ✅ **Build Scalable Systems** with clean architecture
