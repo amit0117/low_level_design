@@ -16,7 +16,7 @@ class BuyStockCommand(OrderCommand):
     def __init__(self, account: Account, order: Order):
         self.account = account
         self.order = order
-        self.stock_exchange = StockExchange.get_instance()
+        self.stock_exchange = StockExchange()
 
     def execute(self):
         # Validate based on order type
@@ -87,7 +87,7 @@ class SellStockCommand(OrderCommand):
     def __init__(self, account: Account, order: Order):
         self.account = account
         self.order = order
-        self.stock_exchange = StockExchange.get_instance()
+        self.stock_exchange = StockExchange()
 
     def execute(self):
         # validate that the quantity available is greater than the quantity to sell

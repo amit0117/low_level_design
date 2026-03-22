@@ -1,4 +1,5 @@
 # app/models/order.py
+from __future__ import annotations
 from app.models.enums import OrderType, TransactionType, OrderStatus
 from app.models.execution_strategy import (
     ExecutionStrategy,
@@ -28,7 +29,7 @@ class Order:
         quantity: int,
         strategy: ExecutionStrategy,
         stock: Stock,
-        user: "User",
+        user: User,
         limit_price: Optional[float] = None,
         stop_price: Optional[float] = None,
     ):
@@ -52,7 +53,7 @@ class Order:
     def get_quantity(self) -> int:
         return self.quantity
 
-    def get_owner(self) -> "User":
+    def get_owner(self) -> User:
         return self.owner
 
     def get_stock(self) -> Stock:
@@ -93,6 +94,15 @@ class Order:
         if self.owner:
             self.owner.order_status_update(self)
 
+    def is_market_like(self) -> bool:
+        return self.get_type() in [OrderType.MARKET, OrderType.STOP_LOSS]
+
+    def is_limit_like(self) -> bool:
+        return self.get_type() in [OrderType.LIMIT, OrderType.STOP_LIMIT]
+
+    def is_stop_like(self) -> bool:
+        return self.get_type() in [OrderType.STOP_LOSS, OrderType.STOP_LIMIT]
+
 
 class OrderBuilder:
 
@@ -101,49 +111,49 @@ class OrderBuilder:
 
     def reset(self):
         self.stock: Optional[Stock] = None
-        self.user: Optional["User"] = None
+        self.user: Optional[User] = None
         self.order_type: Optional[OrderType] = None
         self.transaction_type: Optional[TransactionType] = None
         self.quantity: int = 0
         self.limit_price: float = 0.0
         self.stop_price: float = 0.0
 
-    def for_user(self, user: "User") -> "OrderBuilder":
+    def for_user(self, user: User) -> OrderBuilder:
         self.user = user
         return self
 
-    def with_stock(self, stock: Stock) -> "OrderBuilder":
+    def with_stock(self, stock: Stock) -> OrderBuilder:
         self.stock = stock
         return self
 
-    def sell(self, quantity: int) -> "OrderBuilder":
+    def sell(self, quantity: int) -> OrderBuilder:
         self.transaction_type = TransactionType.SELL
         self.quantity = quantity
         return self
 
-    def buy(self, quantity: int) -> "OrderBuilder":
+    def buy(self, quantity: int) -> OrderBuilder:
         self.quantity = quantity
         self.transaction_type = TransactionType.BUY
         return self
 
-    def as_market(self) -> "OrderBuilder":
+    def as_market(self) -> OrderBuilder:
         self.order_type = OrderType.MARKET
         self.strategy = MarketOrder()
         return self
 
-    def as_limit(self, limit_price: float) -> "OrderBuilder":
+    def as_limit(self, limit_price: float) -> OrderBuilder:
         self.order_type = OrderType.LIMIT
         self.limit_price = limit_price
         self.strategy = LimitOrder()
         return self
 
-    def as_stop_loss(self, stop_price: float) -> "OrderBuilder":
+    def as_stop_loss(self, stop_price: float) -> OrderBuilder:
         self.order_type = OrderType.STOP_LOSS
         self.stop_price = stop_price
         self.strategy = StopLossOrder()
         return self
 
-    def as_stop_limit(self, stop_price: float, limit_price: float) -> "OrderBuilder":
+    def as_stop_limit(self, stop_price: float, limit_price: float) -> OrderBuilder:
         self.order_type = OrderType.STOP_LIMIT
         self.stop_price = stop_price
         self.limit_price = limit_price

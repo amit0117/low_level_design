@@ -1,34 +1,18 @@
+from __future__ import annotations
+from app.utils import SingletonMeta
 from threading import Lock
-from typing import Optional
 from app.models.user import User
 from app.models.stock import Stock
 from app.models.order import Order
 from app.models.order_command import BuyStockCommand, SellStockCommand, CancelOrderCommand
 
 
-class StockBrokerageSystem:
-    _lock = Lock()
-    _instance: Optional["StockBrokerageSystem"] = None
-    _has_initialized: bool = False
-
-    def __new__(cls):
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = super().__new__(cls)
-        return cls._instance
+class StockBrokerageSystem(metaclass=SingletonMeta):
 
     def __init__(self):
-        if not self._has_initialized:
-            self._users: dict[str, User] = {}
-            self._stocks: dict[str, Stock] = {}
-            self.process_lock = Lock()
-            self._has_initialized = True
-        return
-
-    @classmethod
-    def get_instance(cls) -> "StockBrokerageSystem":
-        return cls()
+        self._users: dict[str, User] = {}
+        self._stocks: dict[str, Stock] = {}
+        self.process_lock = Lock()
 
     def register_user(self, user: User) -> None:
         with self.process_lock:

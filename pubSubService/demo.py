@@ -3,7 +3,8 @@ import os
 from pub_sub_app import PubSubApp
 from app.models.enums import BrokerType, MessagePersistenceStrategy
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
+from collections import deque
+from queue import Queue
 
 def scenario1_rabbitmq_broadcast():
     print("\n=== Scenario 1: RabbitMQ Broadcast (Push + Broadcast + At-Least-Once) ===\n")

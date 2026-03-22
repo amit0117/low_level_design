@@ -1,40 +1,21 @@
+from __future__ import annotations
+from app.utils import SingletonMeta
 from threading import Lock
-from typing import Optional
 from app.models.order import Order
 from app.models.stock import Stock
-from app.models.order_state import (
-    PartiallyFilledState,
-    FilledState,
-    FailedState,
-)
-from app.models.enums import OrderStatus, OrderType, TransactionType
+from app.models.order_state import PartiallyFilledState, FilledState, FailedState
+from app.models.enums import OrderStatus, TransactionType
 from collections import defaultdict
 from app.exceptions import NoMatchStockFoundException
 
 
-class StockExchange:
-    _lock = Lock()
-    _instance: Optional["StockExchange"] = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = super().__new__(cls)
-        return cls._instance
+class StockExchange(metaclass=SingletonMeta):
 
     def __init__(self):
-        if hasattr(self, "has_initialized"):
-            return
         # Order Book
         self.buy_orders: dict[str, list[Order]] = defaultdict(list)
         self.sell_orders: dict[str, list[Order]] = defaultdict(list)
         self.match_lock = Lock()
-        self.has_initialized = True
-
-    @classmethod
-    def get_instance(cls) -> "StockExchange":
-        return cls()
 
     def place_buy_order(self, order: Order) -> None:
         with self.match_lock:
@@ -52,15 +33,14 @@ class StockExchange:
         if not executable_orders:
             raise NoMatchStockFoundException()
 
-        # Prioritize by order type and price
-        limit_orders = [o for o in executable_orders if o.order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]]
-        market_orders = [o for o in executable_orders if o.order_type in [OrderType.MARKET, OrderType.STOP_LOSS]]
+        # Market / stop-loss (market-like): immediate-execution intent — prioritize over resting limits (FIFO).
+        limit_orders = [o for o in executable_orders if o.is_limit_like()]
+        market_orders = [o for o in executable_orders if o.is_market_like()]
 
+        if market_orders:
+            return market_orders[0]
         if limit_orders:
             return max(limit_orders, key=lambda o: o.get_limit_price())
-        elif market_orders:
-            # IF there is any Market order (Market, Stop Limit order) that will always execute, So returning the first entry
-            return market_orders[0]
 
         raise NoMatchStockFoundException()
 
@@ -70,22 +50,21 @@ class StockExchange:
         if not executable_orders:
             raise NoMatchStockFoundException()
 
-        # Prioritize by order type and price
-        limit_orders = [o for o in executable_orders if o.order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]]
-        market_orders = [o for o in executable_orders if o.order_type in [OrderType.MARKET, OrderType.STOP_LOSS]]
+        # Market / stop-loss (market-like): immediate-execution intent — prioritize over resting limits (FIFO).
+        limit_orders = [o for o in executable_orders if o.is_limit_like()]
+        market_orders = [o for o in executable_orders if o.is_market_like()]
 
+        if market_orders:
+            return market_orders[0]
         if limit_orders:
             return min(limit_orders, key=lambda o: o.get_limit_price())
-        elif market_orders:
-            # If there is any Market order (Market or Stop Limit) return because that will always execute
-            return market_orders[0]
 
         raise NoMatchStockFoundException()
 
     def _match_order(self, stock: Stock) -> None:
         # Don't acquire lock here since it's already held by the calling method
-        buys = self.buy_orders.get(stock.get_symbol(), [])
-        sells = self.sell_orders.get(stock.get_symbol(), [])
+        buys = self.buy_orders[stock.get_symbol()]
+        sells = self.sell_orders[stock.get_symbol()]
 
         if not buys or not sells:
             return
@@ -105,27 +84,19 @@ class StockExchange:
 
     def _can_match(self, buy_order: Order, sell_order: Order) -> bool:
         # For market orders, they can always match with each other
-        if buy_order.order_type in [OrderType.MARKET, OrderType.STOP_LOSS] and sell_order.order_type in [OrderType.MARKET, OrderType.STOP_LOSS]:
+        if buy_order.is_market_like() and sell_order.is_market_like():
             return True
 
         # For limit orders, check price compatibility
-        if buy_order.order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]:
-            buy_price = buy_order.get_limit_price()
-        else:
-            buy_price = buy_order.get_stock().get_price()
-
-        if sell_order.order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]:
-            sell_price = sell_order.get_limit_price()
-        else:
-            sell_price = sell_order.get_stock().get_price()
+        buy_price = self._get_execution_price(buy_order)
+        sell_price = self._get_execution_price(sell_order)
 
         return buy_price >= sell_price
 
     def _get_execution_price(self, order: Order) -> float:
-        if order.order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]:
+        if order.is_limit_like():
             return order.get_limit_price()
-        else:  # MARKET or STOP_LOSS
-            return order.get_stock().get_price()
+        return order.get_stock().get_price()
 
     def _execute_trade(self, buy_order: Order, sell_order: Order) -> None:
         # Determine execution price based on order types
@@ -146,37 +117,33 @@ class StockExchange:
 
     def _determine_execution_price(self, buy_order: Order, sell_order: Order) -> float:
         # If both are market orders, use current stock price
-        if buy_order.order_type in [OrderType.MARKET, OrderType.STOP_LOSS] and sell_order.order_type in [OrderType.MARKET, OrderType.STOP_LOSS]:
+        if all(order.is_market_like() for order in [buy_order, sell_order]):
             return buy_order.get_stock().get_price()
 
-        # Market orders execute at the limit order price if available
-        if buy_order.order_type in [OrderType.MARKET, OrderType.STOP_LOSS]:
-            if sell_order.order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]:
-                return sell_order.get_limit_price()
-        elif sell_order.order_type in [OrderType.MARKET, OrderType.STOP_LOSS]:
-            if buy_order.order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]:
-                return buy_order.get_limit_price()
+        # check if both are limit orders (why this works because of the buy_price >= sell_price condition we have in the _can_match method)
+        if all(order.is_limit_like() for order in [buy_order, sell_order]):
+            return min(buy_order.get_limit_price(), sell_order.get_limit_price())
 
-        # Both are limit orders - use the better price for the market
-        buy_price = buy_order.get_limit_price()
-        sell_price = sell_order.get_limit_price()
-        return min(buy_price, sell_price)
+        # One market-like, one limit-like: print at the resting limit (market has no limit price)
+        if buy_order.is_limit_like():
+            return buy_order.get_limit_price()
+        return sell_order.get_limit_price()
 
     def _check_stop_orders_after_price_change(self, stock: Stock) -> None:
         """Check and trigger stop orders after stock price changes"""
         symbol = stock.get_symbol()
 
         # Check buy stop orders
-        for order in self.buy_orders.get(symbol, []):
-            if order.order_type in [OrderType.STOP_LOSS, OrderType.STOP_LIMIT]:
+        for order in self.buy_orders[symbol]:
+            if order.is_stop_like():
                 if order.get_status() == OrderStatus.OPEN and order.can_execute():
                     # Order got triggered, try to match again
                     self._match_order(stock)
                     break
 
         # Check sell stop orders
-        for order in self.sell_orders.get(symbol, []):
-            if order.order_type in [OrderType.STOP_LOSS, OrderType.STOP_LIMIT]:
+        for order in self.sell_orders[symbol]:
+            if order.is_stop_like():
                 if order.get_status() == OrderStatus.OPEN and order.can_execute():
                     # Order got triggered, try to match again
                     self._match_order(stock)

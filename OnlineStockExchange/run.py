@@ -54,7 +54,7 @@ class OnlineStockExchangeDemo:
     """Comprehensive demo of the Online Stock Exchange System"""
 
     def __init__(self):
-        self.system = StockBrokerageSystem.get_instance()
+        self.system = StockBrokerageSystem()
 
     def setup_system(self):
         """Set up the initial system with users and stocks"""

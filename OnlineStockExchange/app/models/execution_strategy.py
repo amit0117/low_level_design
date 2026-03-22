@@ -1,3 +1,4 @@
+from __future__ import annotations
 from app.models.enums import TransactionType, OrderStatus
 from app.models.order_state import TriggerState
 from abc import ABC, abstractmethod
@@ -9,13 +10,13 @@ if TYPE_CHECKING:
 
 class ExecutionStrategy(ABC):
     @abstractmethod
-    def can_execute(self, order: "Order") -> bool:
+    def can_execute(self, order: Order) -> bool:
         raise NotImplementedError("Execution strategy not implemented")
 
 
 class LimitOrder(ExecutionStrategy):
 
-    def can_execute(self, order: "Order") -> bool:
+    def can_execute(self, order: Order) -> bool:
         market_price = order.get_stock().get_price()
         # Market orders can be executed immediately if there are matching orders
         if order.transaction_type == TransactionType.BUY:
@@ -28,14 +29,15 @@ class LimitOrder(ExecutionStrategy):
 
 class MarketOrder(ExecutionStrategy):
 
-    def can_execute(self, order: "Order") -> bool:
+    def can_execute(self, order: Order) -> bool:
         # Market orders can be executed immediately irrespective of market price
         return True
 
 
+# Stop Loss is also called Stop Market Order
 class StopLossOrder(ExecutionStrategy):
 
-    def can_execute(self, order: "Order") -> bool:
+    def can_execute(self, order: Order) -> bool:
         market_price = order.get_stock().get_price()
 
         if not getattr(order, "has_triggered", False):  # not triggered yet
@@ -65,7 +67,8 @@ class StopLossOrder(ExecutionStrategy):
 
 
 class StopLimitOrder(ExecutionStrategy):
-    def can_execute(self, order: "Order") -> bool:
+
+    def can_execute(self, order: Order) -> bool:
         market_price = order.get_stock().get_price()
 
         if not getattr(order, "has_triggered", False):  # waiting
