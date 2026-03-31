@@ -177,25 +177,3 @@ if __name__=="__main__":
 
     text_editor.execute(cmd4)
     print(text_editor.get_text(),"\n")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
