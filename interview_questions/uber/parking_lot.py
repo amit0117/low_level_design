@@ -152,7 +152,7 @@ class Ticket:
         self.unparked_at=None
         self.exit_gate_number=None
         self.payment=None
-        self.spot:Spot=spot
+        self.spot: ParkingSpot = spot
         self.floor_number=floor_number
 
     def parked_time_in_minutes(self):
@@ -166,27 +166,27 @@ class Ticket:
     def update_unpark_time(self):
         self.unparked_at=datetime.now()
 
-    def update_exit_gate(self,exit_gate):
-        self.exit_gate=exit_gate
+    def update_exit_gate(self,exit_gate:int):
+        self.exit_gate_number = exit_gate
 
-    def update_payment(self,payment):
+    def update_payment(self,payment:PaymentResponse):
         self.payment=payment
 
 class PaymentResponse:
-    def __init__(self,payment_method,status:PaymentStatus,amount):
+    def __init__(self,payment_method:str,status:PaymentStatus,amount:float):
         self.method=payment_method
         self.status=status
         self.amount=amount
 
 class PaymentMethod(ABC):
     @abstractmethod
-    def pay(self, amount):
+    def pay(self, amount:float)->PaymentResponse    :
         raise NotImplementedError("Subclasses must implement this class")
 
 class DebitCard(PaymentMethod):
 
     # skipping the card details and the validation for now
-    def pay(self,amount)->PaymentResponse:
+    def pay(self,amount:float)->PaymentResponse:
         print(f"Making payment of amount {amount} using DebitCard\n")
         return PaymentResponse("DebitCard",PaymentStatus.SUCCESS,amount )
 
