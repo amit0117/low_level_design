@@ -309,6 +309,112 @@ while scheduled_queue and scheduled_queue[0].when <= now:
 
 Handles: `asyncio.sleep()` completions, `BackgroundTasks`, thread pool futures that completed.
 
+#### What produces scheduled callbacks? — Real-Life Examples
+
+**Example 1: Rate Limiting — Retry after delay**
+
+```python
+@app.get("/fetch-price")
+async def fetch_stock_price():
+    async with httpx.AsyncClient() as client:
+        resp = await client.get("https://api.stocks.com/price")
+        if resp.status_code == 429:       # Too Many Requests
+            await asyncio.sleep(2)        # ← goes into _scheduled at now + 2s
+            resp = await client.get("https://api.stocks.com/price")
+    return resp.json()
+```
+
+**Example 2: Timeout — Don't wait forever for slow DB**
+
+```python
+@app.get("/search")
+async def search():
+    try:
+        result = await asyncio.wait_for(    # ← schedules a cancel timer
+            slow_database_query(),
+            timeout=5.0                     # "if not done in 5s, cancel it"
+        )
+    except asyncio.TimeoutError:
+        return {"error": "Search took too long"}
+```
+
+**Example 3: Background periodic health check**
+
+```python
+async def health_check_loop():
+    while True:
+        await ping_all_services()           # check DB, Redis, etc.
+        await asyncio.sleep(30)             # ← goes into _scheduled at now + 30s
+```
+
+#### Tracing `_scheduled` over time with all three running
+
+```
+Time 0.0 — all three tasks start, hit their await asyncio.sleep()
+──────────────────────────────────────────────────────────────────
+_scheduled (min-heap, sorted by .when):
+  [ {when: 2.0,  callback: resume fetch_stock_price},     ← rate limit retry
+    {when: 5.0,  callback: cancel slow_database_query},    ← timeout guard
+    {when: 30.0, callback: resume health_check_loop} ]     ← periodic check
+
+_ready: []   ← nothing to run right now
+
+
+Time 0.3 → 1.9 — event loop serves other requests while timers wait
+────────────────────────────────────────────────────────────────────
+  poll(timeout=2.0)  ← sleeps, but ALSO watches 500 client sockets
+
+  At 0.3s: socket 47 has data → handle client request
+  At 0.8s: socket 102 has data → handle another request
+  At 1.5s: DB response arrives → slow_database_query completes EARLY
+
+  run_scheduled_callbacks():
+    now = 1.5
+    scheduled[0].when = 2.0
+    1.5 <= 2.0?  NO → skip. No timers due yet.
+
+
+Time 2.0 — rate limit retry timer fires
+────────────────────────────────────────
+  poll() returns (timeout expired)
+
+  run_scheduled_callbacks():
+    now = 2.0
+    scheduled[0].when = 2.0  (rate limit retry)
+    2.0 <= 2.0?  YES → pop → move to _ready → EXECUTE
+    → fetch_stock_price resumes, retries the API call
+
+    scheduled[0].when = 5.0  (timeout)
+    2.0 <= 5.0?  NO → stop
+
+
+Time 5.0 — timeout timer fires (but query already done)
+────────────────────────────────────────────────────────
+  run_scheduled_callbacks():
+    now = 5.0
+    scheduled[0].when = 5.0  (timeout for DB query)
+    5.0 <= 5.0?  YES → pop → callback sees task already completed → no-op
+    Stale timer. Harmless.
+
+    scheduled[0].when = 30.0 (health check)
+    5.0 <= 30.0?  NO → stop
+
+
+Time 30.0 — health check timer fires
+─────────────────────────────────────
+  run_scheduled_callbacks():
+    now = 30.0
+    scheduled[0].when = 30.0 (health check)
+    30.0 <= 30.0?  YES → pop → resume health_check_loop
+
+    → pings all services
+    → hits await asyncio.sleep(30) again
+    → NEW entry: {when: 60.0, callback: resume health_check_loop}
+    → repeats forever
+```
+
+**Key takeaway:** Without `run_scheduled_callbacks()`, the event loop could only react to I/O events (socket data). It would have no concept of time — no `sleep()`, no `timeout`, no retry delays, no periodic tasks. `poll()` handles "something happened on a socket", `run_scheduled_callbacks()` handles "enough time has passed".
+
 ### One Full Iteration with 500 Requests
 
 ```
